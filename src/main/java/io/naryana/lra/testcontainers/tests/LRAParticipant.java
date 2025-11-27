@@ -39,7 +39,7 @@ public class LRAParticipant {
     @Context
     UriInfo uriInfo;
 
-    @LRA
+    @LRA(end = false)
     @GET
     @Path(CREATE_OR_CONTINUE_LRA)
     public Response bookGame(@HeaderParam(LRA.LRA_HTTP_CONTEXT_HEADER) URI lraId) {

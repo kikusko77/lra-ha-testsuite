@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<checkstyle version="10.26.1">
+<file name="/Users/christiankuric/thesis/lra-ha-testsuite/src/main/java/io/naryana/lra/testcontainers/tests/LRAParticipant.java">
+</file>
+<file name="/Users/christiankuric/thesis/lra-ha-testsuite/src/test/java/io/narayana/lra/testcontainers/tests/CoordinatorClusterIntegrationTestIT.java">
+</file>
+<file name="/Users/christiankuric/thesis/lra-ha-testsuite/src/test/java/io/narayana/lra/testcontainers/tests/TestBase.java">
+</file>
+<file name="/Users/christiankuric/thesis/lra-ha-testsuite/src/test/java/io/narayana/lra/testcontainers/tests/LraIT.java">
+</file>
+<file name="/Users/christiankuric/thesis/lra-ha-testsuite/src/test/java/io/narayana/lra/testcontainers/LraCoordinatorTestResource.java">
+</file>
+<file name="/Users/christiankuric/thesis/lra-ha-testsuite/src/test/java/io/narayana/lra/testcontainers/LraCoordinatorContainer.java">
+</file>
+<file name="/Users/christiankuric/thesis/lra-ha-testsuite/src/test/java/io/narayana/lra/testcontainers/CoordinatorClusterManager.java">
+</file>
+<file name="/Users/christiankuric/thesis/lra-ha-testsuite/src/test/java/io/narayana/lra/testcontainers/ProxyContainer.java">
+</file>
+<file name="/Users/christiankuric/thesis/lra-ha-testsuite/src/main/resources/application.properties">
+</file>
+</checkstyle>

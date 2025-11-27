@@ -11,7 +11,7 @@ public class LraCoordinatorContainer extends GenericContainer<LraCoordinatorCont
 
     public LraCoordinatorContainer(String id, String sharedObjectStorePath) {
         //        super("quay.io/jbosstm/lra-coordinator:7.2.2.Final-3.29.3");
-        super("christiankuric/lra-coordinator-quarkus:1.0.0-SNAPSHOT");
+        super("local-coordinator:latest");
 
         this.id = id;
 

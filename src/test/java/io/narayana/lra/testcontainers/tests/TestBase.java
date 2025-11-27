@@ -6,6 +6,7 @@ import io.narayana.lra.LRAConstants;
 import io.narayana.lra.LRAData;
 import io.narayana.lra.client.internal.NarayanaLRAClient;
 import io.narayana.lra.testcontainers.CoordinatorClusterManager;
+import io.narayana.lra.testcontainers.LraCoordinatorTestResource;
 import io.naryana.lra.testcontainers.tests.LRAParticipant;
 import jakarta.json.Json;
 import jakarta.json.JsonArray;
@@ -41,11 +42,10 @@ public abstract class TestBase {
 
     @BeforeAll
     void beforeAll() {
-        clusterManager = new CoordinatorClusterManager();
-        clusterManager.startCoordinators(1);
+        clusterManager = LraCoordinatorTestResource.getClusterManager();
+        String proxyUrl = clusterManager.getProxyUrl();
 
-        System.setProperty("lra.coordinator.url", clusterManager.getProxyUrl());
-        lraClient = new NarayanaLRAClient();
+        lraClient = new NarayanaLRAClient(URI.create(proxyUrl));
         coordinatorUrl = lraClient.getCoordinatorUrl();
     }
 
@@ -55,14 +55,7 @@ public abstract class TestBase {
             lraClient.close();
         }
 
-        if (clusterManager != null) {
-            clusterManager.getCoordinators().forEach(c -> {
-                try {
-                    c.stop();
-                } catch (Exception ignored) {
-                }
-            });
-        }
+        clusterManager = null;
     }
 
     @BeforeEach

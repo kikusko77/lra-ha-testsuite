@@ -1,0 +1,12 @@
+#Wed Nov 26 18:05:04 CET 2025
+/Users/christiankuric/thesis/lra-ha-testsuite/src/main/java/io/naryana/lra/testcontainers/tests/LRAParticipant.java=1764176671744
+/Users/christiankuric/thesis/lra-ha-testsuite/src/main/resources/application.properties=1764176701064
+/Users/christiankuric/thesis/lra-ha-testsuite/src/test/java/io/narayana/lra/testcontainers/CoordinatorClusterManager.java=1763562934354
+/Users/christiankuric/thesis/lra-ha-testsuite/src/test/java/io/narayana/lra/testcontainers/LraCoordinatorContainer.java=1764095004780
+/Users/christiankuric/thesis/lra-ha-testsuite/src/test/java/io/narayana/lra/testcontainers/LraCoordinatorTestResource.java=1764176285408
+/Users/christiankuric/thesis/lra-ha-testsuite/src/test/java/io/narayana/lra/testcontainers/ProxyContainer.java=1764174732726
+/Users/christiankuric/thesis/lra-ha-testsuite/src/test/java/io/narayana/lra/testcontainers/tests/CoordinatorClusterIntegrationTestIT.java=1764095191222
+/Users/christiankuric/thesis/lra-ha-testsuite/src/test/java/io/narayana/lra/testcontainers/tests/LraIT.java=1764176252387
+/Users/christiankuric/thesis/lra-ha-testsuite/src/test/java/io/narayana/lra/testcontainers/tests/TestBase.java=1764176460860
+configuration*?=FA17E2CEAFC4A632AF739EAF44EFB273047920F3
+module-resource*?\:/narayana-checkstyle/suppressions.xml=DD3FD5987C62C3034A4613F83C42B24683BCFC2E

@@ -11,6 +11,7 @@ public class ProxyContainer extends GenericContainer<ProxyContainer> {
 
         withNetwork(net);
         withExposedPorts(8080);
+        addFixedExposedPort(8080, 8080);
 
         withFileSystemBind("/var/run/docker.sock", "/var/run/docker.sock", BindMode.READ_ONLY);
 
@@ -28,6 +29,6 @@ public class ProxyContainer extends GenericContainer<ProxyContainer> {
     }
 
     public String getUrl() {
-        return "http://" + getHost() + ":" + getMappedPort(8080);
+        return "http://localhost:8080";
     }
 }

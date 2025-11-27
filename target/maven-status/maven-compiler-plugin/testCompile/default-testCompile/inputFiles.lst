@@ -1,0 +1,7 @@
+/Users/christiankuric/thesis/lra-ha-testsuite/src/test/java/io/narayana/lra/testcontainers/CoordinatorClusterManager.java
+/Users/christiankuric/thesis/lra-ha-testsuite/src/test/java/io/narayana/lra/testcontainers/LraCoordinatorContainer.java
+/Users/christiankuric/thesis/lra-ha-testsuite/src/test/java/io/narayana/lra/testcontainers/LraCoordinatorTestResource.java
+/Users/christiankuric/thesis/lra-ha-testsuite/src/test/java/io/narayana/lra/testcontainers/ProxyContainer.java
+/Users/christiankuric/thesis/lra-ha-testsuite/src/test/java/io/narayana/lra/testcontainers/tests/CoordinatorClusterIntegrationTestIT.java
+/Users/christiankuric/thesis/lra-ha-testsuite/src/test/java/io/narayana/lra/testcontainers/tests/LraIT.java
+/Users/christiankuric/thesis/lra-ha-testsuite/src/test/java/io/narayana/lra/testcontainers/tests/TestBase.java
