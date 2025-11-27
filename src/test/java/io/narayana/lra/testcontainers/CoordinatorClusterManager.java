@@ -29,6 +29,13 @@ public class CoordinatorClusterManager {
         proxy.start();
     }
 
+    public void stopAllCoordinators() {
+        for (LraCoordinatorContainer coordinator : coordinators) {
+            coordinator.stop();
+            coordinators.remove(coordinator);
+        }
+    }
+
     private void startCoordinator(String id) {
         LraCoordinatorContainer c = new LraCoordinatorContainer(id, sharedObjectStore.toString())
                 .withNetwork(network)
