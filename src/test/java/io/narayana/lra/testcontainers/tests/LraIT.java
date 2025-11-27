@@ -14,16 +14,15 @@ import org.slf4j.LoggerFactory;
 
 @QuarkusTest
 @QuarkusTestResource(LraCoordinatorTestResource.class)
-public class LraIT extends TestBase {
+class LraIT extends TestBase {
 
     private static final Logger log = LoggerFactory.getLogger(LraIT.class);
 
-    // Let Quarkus inject the correct test URL (http://localhost:8081)
     @TestHTTPResource
     URI participantBaseUri;
 
     @Test
-    public void testChainOfInvocations() {
+    void testChainOfInvocations() {
         log.debug("Starting testChainOfInvocations");
 
         URI lra1 = invokeParticipant(participantBaseUri, null, LRAParticipant.CREATE_OR_CONTINUE_LRA, 200);

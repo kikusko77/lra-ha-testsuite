@@ -17,12 +17,10 @@ public class LraCoordinatorTestResource implements QuarkusTestResourceLifecycleM
         clusterManager = new CoordinatorClusterManager();
         clusterManager.startCoordinators(1);
 
-        String proxyUrl = clusterManager.getProxyUrl(); // e.g. http://localhost:8080/lra-coordinator
+        String proxyUrl = clusterManager.getProxyUrl();
 
         Map<String, String> cfg = new HashMap<>();
         cfg.put("quarkus.lra.coordinator-url", proxyUrl);
-        // Optionally also expose host:
-        // cfg.put("quarkus.http.host", "0.0.0.0");
         return cfg;
     }
 

@@ -1,7 +1,6 @@
 package io.narayana.lra.testcontainers;
 
 import java.io.IOException;
-import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -18,7 +17,6 @@ public class CoordinatorClusterManager {
     public void startCoordinators(int count) {
         try {
             sharedObjectStore = Files.createTempDirectory("lra-objectstore-");
-            System.out.println("✓ Shared object store created at: " + sharedObjectStore);
         } catch (IOException e) {
             throw new RuntimeException("Failed to start registry HTTP server", e);
         }
@@ -58,10 +56,6 @@ public class CoordinatorClusterManager {
 
     public String getProxyUrl() {
         return proxy.getUrl() + "/lra-coordinator";
-    }
-
-    public URI getSharedObjectStorePath() {
-        return sharedObjectStore.toUri();
     }
 
     public List<LraCoordinatorContainer> getCoordinators() {

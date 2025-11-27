@@ -1,6 +1,0 @@
-io/narayana/lra/testcontainers/LraCoordinatorTestResource.class
-io/narayana/lra/testcontainers/ProxyContainer.class
-io/narayana/lra/testcontainers/CoordinatorClusterManager.class
-io/narayana/lra/testcontainers/LraCoordinatorContainer.class
-io/narayana/lra/testcontainers/tests/TestBase.class
-io/narayana/lra/testcontainers/tests/LraIT.class
