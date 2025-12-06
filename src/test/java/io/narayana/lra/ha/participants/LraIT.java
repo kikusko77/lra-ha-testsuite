@@ -1,7 +1,7 @@
-package io.narayana.lra.testcontainers.tests;
+package io.narayana.lra.ha.participants;
 
-import io.narayana.lra.testcontainers.LraCoordinatorTestResource;
-import io.naryana.lra.testcontainers.tests.LRAParticipant;
+import io.narayana.lra.ha.utils.LraCoordinatorTestResource;
+import io.naryana.lra.ha.LRAParticipant;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.common.http.TestHTTPResource;
 import io.quarkus.test.junit.QuarkusTest;

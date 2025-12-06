@@ -1,13 +1,13 @@
-package io.narayana.lra.testcontainers.tests;
+package io.narayana.lra.ha.participants;
 
 import static org.eclipse.microprofile.lra.annotation.ws.rs.LRA.LRA_HTTP_CONTEXT_HEADER;
 
 import io.narayana.lra.LRAConstants;
 import io.narayana.lra.LRAData;
 import io.narayana.lra.client.internal.NarayanaLRAClient;
-import io.narayana.lra.testcontainers.CoordinatorClusterManager;
-import io.narayana.lra.testcontainers.LraCoordinatorTestResource;
-import io.naryana.lra.testcontainers.tests.LRAParticipant;
+import io.narayana.lra.ha.utils.CoordinatorClusterManager;
+import io.narayana.lra.ha.utils.LraCoordinatorTestResource;
+import io.naryana.lra.ha.LRAParticipant;
 import jakarta.json.Json;
 import jakarta.json.JsonArray;
 import jakarta.json.JsonReader;

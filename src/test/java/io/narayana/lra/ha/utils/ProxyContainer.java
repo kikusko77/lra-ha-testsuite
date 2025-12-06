@@ -1,4 +1,4 @@
-package io.narayana.lra.testcontainers;
+package io.narayana.lra.ha.utils;
 
 import org.testcontainers.containers.BindMode;
 import org.testcontainers.containers.GenericContainer;
@@ -10,7 +10,7 @@ public class ProxyContainer extends GenericContainer<ProxyContainer> {
         super("traefik:v3.0");
 
         withNetwork(net);
-        withExposedPorts(8080);
+        withExposedPorts(8090);
 
         withFileSystemBind("/var/run/docker.sock", "/var/run/docker.sock", BindMode.READ_ONLY);
 
@@ -18,7 +18,7 @@ public class ProxyContainer extends GenericContainer<ProxyContainer> {
                 "--providers.docker=true",
                 "--providers.docker.endpoint=unix:///var/run/docker.sock",
                 "--providers.docker.exposedByDefault=false",
-                "--entrypoints.http.address=:8080",
+                "--entrypoints.http.address=:8090",
                 "--api.insecure=true",
                 "--api.dashboard=true",
                 "--entrypoints.traefik.address=:9999",
@@ -28,6 +28,6 @@ public class ProxyContainer extends GenericContainer<ProxyContainer> {
     }
 
     public String getUrl() {
-        return "http://" + getHost() + ":" + getMappedPort(8080);
+        return "http://" + getHost() + ":" + getMappedPort(8090);
     }
 }

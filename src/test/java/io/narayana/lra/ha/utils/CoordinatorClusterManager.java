@@ -1,4 +1,4 @@
-package io.narayana.lra.testcontainers;
+package io.narayana.lra.ha.utils;
 
 import java.io.IOException;
 import java.nio.file.Files;

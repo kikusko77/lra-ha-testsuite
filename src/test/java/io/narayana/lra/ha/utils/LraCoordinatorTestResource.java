@@ -1,4 +1,4 @@
-package io.narayana.lra.testcontainers;
+package io.narayana.lra.ha.utils;
 
 import io.quarkus.test.common.QuarkusTestResourceLifecycleManager;
 import java.util.HashMap;

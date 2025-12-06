@@ -3,7 +3,7 @@
    SPDX-License-Identifier: Apache-2.0
  */
 
-package io.naryana.lra.testcontainers.tests;
+package io.naryana.lra.ha;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.ws.rs.GET;
