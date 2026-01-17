@@ -1,0 +1,42 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: lra
+      POSTGRES_USER: lra
+      POSTGRES_PASSWORD: lra
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lra -d lra"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  coordinator-1:
+    image: local-coordinator:latest
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    ports:
+      - "8081:8080"
+    environment:
+      NODE_NAME: coordinator-1
+      QUARKUS_DATASOURCE_TX_LOG_JDBC_URL: jdbc:postgresql://postgres:5432/lra
+      QUARKUS_DATASOURCE_TX_LOG_USERNAME: lra
+      QUARKUS_DATASOURCE_TX_LOG_PASSWORD: lra
+
+  coordinator-2:
+    image: local-coordinator:latest
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    ports:
+      - "8082:8080"
+    environment:
+      NODE_NAME: coordinator-2
+      QUARKUS_DATASOURCE_TX_LOG_JDBC_URL: jdbc:postgresql://postgres:5432/lra
+      QUARKUS_DATASOURCE_TX_LOG_USERNAME: lra
+      QUARKUS_DATASOURCE_TX_LOG_PASSWORD: lra
