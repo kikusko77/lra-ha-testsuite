@@ -27,27 +27,27 @@ import org.junit.jupiter.api.TestInstance;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public abstract class TestBase {
 
-    protected NarayanaLRAClient lraClient;
-    protected String coordinatorUrl;
+    protected static NarayanaLRAClient lraClient;
+    protected static String coordinatorUrl;
 
     protected Client client;
     protected List<URI> lrasToAfterFinish;
 
     @BeforeAll
     void beforeAll() {
+        // IMPORTANT: point client to a reachable coordinator.
+        // This should match one of your docker-exposed coordinator URLs.
         String coordinatorBaseUrl = System.getProperty(
                 "coordinator.baseUrl",
-                System.getenv().getOrDefault("COORDINATOR_BASE_URL", "http://localhost:8090/lra-coordinator"));
+                System.getenv().getOrDefault("COORDINATOR_BASE_URL", "http://localhost:8081/lra-coordinator"));
 
         lraClient = new NarayanaLRAClient(URI.create(coordinatorBaseUrl));
-        coordinatorUrl = lraClient.getCoordinatorUrl();
     }
 
     @AfterAll
     void afterAll() {
-        if (lraClient != null) {
+        if (lraClient != null)
             lraClient.close();
-        }
     }
 
     @BeforeEach
