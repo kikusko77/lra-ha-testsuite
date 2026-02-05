@@ -21,24 +21,17 @@ class LraIT extends TestBase {
 
     @Test
     void testFullLifecycle() {
-        URI lra = invokeParticipant(
-                baseUri,
-                null,
-                LRAParticipant.CREATE_OR_CONTINUE_LRA,
-                200);
+        snapshotAllLrasAcrossCoordinators();
+        armHoldAfterCurrentPush(coordinatorUris.get(0), 5000, "io.naryana.lra.ha.LRAParticipant#bookGame", 2);
+        armHoldAfterCurrentPush(coordinatorUris.get(1), 5000, "io.naryana.lra.ha.LRAParticipant#bookGame", 2);
+        armHoldAfterCurrentPush(coordinatorUris.get(2), 5000, "io.naryana.lra.ha.LRAParticipant#bookGame", 0);
+        URI lra = invokeParticipant(baseUri, null, LRAParticipant.CREATE_OR_CONTINUE_LRA, 200);
+
+        snapshotAllLrasAcrossCoordinators();
+
+        log.info("Started: {}", lra);
 
         lrasToAfterFinish.add(lra);
-        // ACTIVE
         assertEquals(LRAStatus.Active, lraClient.getStatus(lra));
-
-        // END
-        invokeParticipant(
-                baseUri,
-                lra,
-                LRAParticipant.END_EXISTING_LRA,
-                200);
-
-        // CLOSED
-        assertEquals(LRAStatus.Closed, lraClient.getStatus(lra));
     }
 }

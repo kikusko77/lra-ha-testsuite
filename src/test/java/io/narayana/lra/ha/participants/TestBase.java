@@ -2,96 +2,136 @@ package io.narayana.lra.ha.participants;
 
 import static org.eclipse.microprofile.lra.annotation.ws.rs.LRA.LRA_HTTP_CONTEXT_HEADER;
 
-import io.narayana.lra.LRAConstants;
 import io.narayana.lra.client.internal.NarayanaLRAClient;
 import io.naryana.lra.ha.LRAParticipant;
-import jakarta.json.Json;
-import jakarta.json.JsonArray;
-import jakarta.json.JsonReader;
+import jakarta.inject.Inject;
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.ClientBuilder;
 import jakarta.ws.rs.client.Invocation;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.MultivaluedHashMap;
+import jakarta.ws.rs.core.MultivaluedMap;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriBuilder;
-import java.io.StringReader;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.TestInstance;
+import org.slf4j.LoggerFactory;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public abstract class TestBase {
 
     protected static NarayanaLRAClient lraClient;
-    protected static String coordinatorUrl;
 
     protected Client client;
     protected List<URI> lrasToAfterFinish;
 
+    @Inject
+    @ConfigProperty(name = "lra.coordinator.urls")
+    List<URI> coordinatorUris;
+
+    protected List<NarayanaLRAClient> coordinatorClients;
+
     @BeforeAll
     void beforeAll() {
-        // IMPORTANT: point client to a reachable coordinator.
-        // This should match one of your docker-exposed coordinator URLs.
-        String coordinatorBaseUrl = System.getProperty(
-                "coordinator.baseUrl",
-                System.getenv().getOrDefault("COORDINATOR_BASE_URL", "http://localhost:8081/lra-coordinator"));
-
-        lraClient = new NarayanaLRAClient(URI.create(coordinatorBaseUrl));
+        lraClient = new NarayanaLRAClient();
     }
 
     @AfterAll
     void afterAll() {
         if (lraClient != null)
             lraClient.close();
+        if (coordinatorClients != null) {
+            coordinatorClients.forEach(c -> {
+                try {
+                    c.close();
+                } catch (Exception ignored) {
+                }
+            });
+        }
     }
 
     @BeforeEach
     void beforeEach() {
         client = ClientBuilder.newClient();
         lrasToAfterFinish = new ArrayList<>();
+
+        coordinatorClients = coordinatorUris.stream()
+                .map(NarayanaLRAClient::new)
+                .toList();
     }
 
     @AfterEach
     void afterEach() {
-        // Just try to cancel what we created, and ignore failures.
         for (URI lraToFinish : lrasToAfterFinish) {
             try {
                 lraClient.cancelLRA(lraToFinish);
             } catch (Exception ignored) {
-                // ignore: it may already be closed/unknown, or coordinator unreachable at shutdown
             }
         }
-
         if (client != null) {
             client.close();
         }
     }
 
-    protected JsonArray getAllRecords(URI lra) {
-        String url = LRAConstants.getLRACoordinatorUrl(lra) + "/";
+    protected List<URI> snapshotAllLrasAcrossCoordinators() {
+        List<URI> all = new ArrayList<>();
+        for (int i = 0; i < coordinatorUris.size(); i++) {
+            URI base = coordinatorUris.get(i);
+            Response r = null;
+            try {
+                r = client.target(base)
+                        .request(MediaType.APPLICATION_JSON)
+                        .get();
 
-        try (Response response = client.target(url).path("").request().get()) {
-            Assertions.assertTrue(response.hasEntity(), "Missing response body when querying for all LRAs");
-            String allLRAs = response.readEntity(String.class);
-            JsonReader jsonReader = Json.createReader(new StringReader(allLRAs));
-            return jsonReader.readArray();
+                String json = r.readEntity(String.class);
+                LoggerFactory.getLogger(getClass())
+                        .info("GET {} -> status={} body={}", base, r.getStatus(), json);
+
+            } finally {
+                if (r != null)
+                    r.close();
+            }
         }
+        return all;
     }
 
-    protected URI invokeParticipant(URI baseUri, URI lraId, String resourcePath, int expectedStatus) {
+    protected void logSnapshot(String label, List<URI> ids) {
+        LoggerFactory.getLogger(getClass())
+                .info("{} total entries (with duplicates): {}", label, ids.size());
+        LoggerFactory.getLogger(getClass())
+                .info("{}: {}", label, ids);
+    }
+
+    protected URI invokeParticipant(URI baseUri,
+            URI lraId,
+            String resourcePath,
+            int expectedStatus,
+            MultivaluedMap<String, String> queryParams) {
         Response response = null;
         try {
-            Invocation.Builder builder = client.target(
+            var target = client.target(
                     UriBuilder.fromUri(baseUri)
                             .path(LRAParticipant.RESOURCE_PATH)
                             .path(resourcePath)
-                            .build())
-                    .request();
+                            .build());
+
+            if (queryParams != null) {
+                for (var e : queryParams.entrySet()) {
+                    for (String v : e.getValue()) {
+                        target = target.queryParam(e.getKey(), v);
+                    }
+                }
+            }
+
+            Invocation.Builder builder = target.request();
 
             if (lraId != null) {
                 builder.header(LRA_HTTP_CONTEXT_HEADER, lraId.toASCIIString());
@@ -100,15 +140,83 @@ public abstract class TestBase {
             response = builder.get();
 
             Assertions.assertTrue(response.hasEntity(), "Expected response to contain LRA id or error message");
-
             String responseMessage = response.readEntity(String.class);
 
             Assertions.assertEquals(expectedStatus, response.getStatus(), responseMessage);
 
             return URI.create(responseMessage);
         } finally {
-            if (response != null)
+            if (response != null) {
                 response.close();
+            }
+        }
+    }
+
+    protected URI invokeParticipant(URI baseUri, URI lraId, String resourcePath, int expectedStatus,
+            String... queryKeyVals) {
+        MultivaluedMap<String, String> qp = null;
+
+        if (queryKeyVals != null && queryKeyVals.length > 0) {
+            Assertions.assertEquals(0, queryKeyVals.length % 2, "Query params must be key/value pairs");
+            qp = new MultivaluedHashMap<>();
+            for (int i = 0; i < queryKeyVals.length; i += 2) {
+                qp.add(queryKeyVals[i], queryKeyVals[i + 1]);
+            }
+        }
+
+        return invokeParticipant(baseUri, lraId, resourcePath, expectedStatus, qp);
+    }
+
+    protected URI invokeParticipant(URI baseUri, URI lraId, String resourcePath, int expectedStatus) {
+        return invokeParticipant(baseUri, lraId, resourcePath, expectedStatus, (MultivaluedMap<String, String>) null);
+    }
+
+    protected void armHoldAfterCurrentPush(URI coordinatorBase, long ms, String clientId, Integer times) {
+        Response r = null;
+        try {
+            var target = client.target(coordinatorBase)
+                    .path("inject/hold-after-current-push")
+                    .queryParam("ms", ms);
+
+            if (clientId != null && !clientId.isBlank()) {
+                target = target.queryParam("clientId", clientId);
+            }
+
+            if (times != null) {
+                target = target.queryParam("times", times);
+            }
+
+            r = target.request(MediaType.TEXT_PLAIN).post(null);
+
+            String body = r.hasEntity() ? r.readEntity(String.class) : "";
+            Assertions.assertTrue(r.getStatus() >= 200 && r.getStatus() < 300,
+                    "Failed to arm hold on " + coordinatorBase + " status=" + r.getStatus() + " body=" + body);
+        } finally {
+            if (r != null)
+                r.close();
+        }
+    }
+
+    protected void resetInjection(URI coordinatorBase) {
+        Response r = null;
+        try {
+            r = client.target(coordinatorBase)
+                    .path("inject/reset")
+                    .request(MediaType.TEXT_PLAIN)
+                    .post(null);
+
+            String body = r.hasEntity() ? r.readEntity(String.class) : "";
+            Assertions.assertTrue(r.getStatus() >= 200 && r.getStatus() < 300,
+                    "Failed to reset injection on " + coordinatorBase + " status=" + r.getStatus() + " body=" + body);
+        } finally {
+            if (r != null)
+                r.close();
+        }
+    }
+
+    protected void resetInjectionOnAllCoordinators() {
+        for (URI c : coordinatorUris) {
+            resetInjection(c);
         }
     }
 }

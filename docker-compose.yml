@@ -26,6 +26,9 @@ services:
       QUARKUS_DATASOURCE_TX_LOG_JDBC_URL: jdbc:postgresql://postgres:5432/lra
       QUARKUS_DATASOURCE_TX_LOG_USERNAME: lra
       QUARKUS_DATASOURCE_TX_LOG_PASSWORD: lra
+      QUARKUS_TRANSACTION_MANAGER_OBJECT_STORE_CREATE_TABLE: "true"
+    extra_hosts:
+     - "host.docker.internal:192.168.65.254"
 
   coordinator-2:
     image: local-coordinator:latest
@@ -40,3 +43,23 @@ services:
       QUARKUS_DATASOURCE_TX_LOG_JDBC_URL: jdbc:postgresql://postgres:5432/lra
       QUARKUS_DATASOURCE_TX_LOG_USERNAME: lra
       QUARKUS_DATASOURCE_TX_LOG_PASSWORD: lra
+      QUARKUS_TRANSACTION_MANAGER_OBJECT_STORE_CREATE_TABLE: "false"
+    extra_hosts:
+     - "host.docker.internal:192.168.65.254"
+
+  coordinator-3:
+    image: local-coordinator:latest
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    ports:
+      - "8083:8080"
+    environment:
+      NODE_NAME: coordinator-2
+      QUARKUS_DATASOURCE_TX_LOG_JDBC_URL: jdbc:postgresql://postgres:5432/lra
+      QUARKUS_DATASOURCE_TX_LOG_USERNAME: lra
+      QUARKUS_DATASOURCE_TX_LOG_PASSWORD: lra
+      QUARKUS_TRANSACTION_MANAGER_OBJECT_STORE_CREATE_TABLE: "false"
+    extra_hosts:
+      - "host.docker.internal:192.168.65.254"
