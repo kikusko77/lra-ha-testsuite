@@ -22,9 +22,9 @@ class LraIT extends TestBase {
     @Test
     void testFullLifecycle() {
         snapshotAllLrasAcrossCoordinators();
-        armHoldAfterCurrentPush(coordinatorUris.get(0), 5000, "io.naryana.lra.ha.LRAParticipant#bookGame", 2);
-        armHoldAfterCurrentPush(coordinatorUris.get(1), 5000, "io.naryana.lra.ha.LRAParticipant#bookGame", 2);
-        armHoldAfterCurrentPush(coordinatorUris.get(2), 5000, "io.naryana.lra.ha.LRAParticipant#bookGame", 0);
+        holdAfterCurrentPush(coordinatorUris.get(0), 5000, "io.naryana.lra.ha.LRAParticipant#bookGame", 2);
+        holdAfterCurrentPush(coordinatorUris.get(1), 5000, "io.naryana.lra.ha.LRAParticipant#bookGame", 2);
+        holdAfterCurrentPush(coordinatorUris.get(2), 5000, "io.naryana.lra.ha.LRAParticipant#bookGame", 0);
         URI lra = invokeParticipant(baseUri, null, LRAParticipant.CREATE_OR_CONTINUE_LRA, 200);
 
         snapshotAllLrasAcrossCoordinators();

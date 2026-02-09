@@ -171,19 +171,19 @@ public abstract class TestBase {
         return invokeParticipant(baseUri, lraId, resourcePath, expectedStatus, (MultivaluedMap<String, String>) null);
     }
 
-    protected void armHoldAfterCurrentPush(URI coordinatorBase, long ms, String clientId, Integer times) {
+    protected void holdAfterCurrentPush(URI coordinatorBase, long sleepTime, String clientId, Integer timeoutCount) {
         Response r = null;
         try {
             var target = client.target(coordinatorBase)
                     .path("inject/hold-after-current-push")
-                    .queryParam("ms", ms);
+                    .queryParam("sleepTime", sleepTime);
 
             if (clientId != null && !clientId.isBlank()) {
                 target = target.queryParam("clientId", clientId);
             }
 
-            if (times != null) {
-                target = target.queryParam("times", times);
+            if (timeoutCount != null) {
+                target = target.queryParam("timeoutCount", timeoutCount);
             }
 
             r = target.request(MediaType.TEXT_PLAIN).post(null);
