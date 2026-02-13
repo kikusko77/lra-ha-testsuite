@@ -4,6 +4,7 @@ import static org.eclipse.microprofile.lra.annotation.ws.rs.LRA.LRA_HTTP_CONTEXT
 
 import io.narayana.lra.client.internal.NarayanaLRAClient;
 import io.naryana.lra.ha.LRAParticipant;
+import jakarta.enterprise.context.control.ActivateRequestContext;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.ClientBuilder;
@@ -20,7 +21,6 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.TestInstance;
 import org.slf4j.LoggerFactory;
@@ -28,7 +28,8 @@ import org.slf4j.LoggerFactory;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public abstract class TestBase {
 
-    protected static NarayanaLRAClient lraClient;
+    @Inject
+    NarayanaLRAClient lraClient;
 
     protected Client client;
     protected List<URI> lrasToAfterFinish;
@@ -39,22 +40,11 @@ public abstract class TestBase {
 
     protected List<NarayanaLRAClient> coordinatorClients;
 
-    @BeforeAll
-    void beforeAll() {
-        lraClient = new NarayanaLRAClient();
-    }
-
     @AfterAll
+    @ActivateRequestContext
     void afterAll() {
-        if (lraClient != null)
+        if (lraClient != null) {
             lraClient.close();
-        if (coordinatorClients != null) {
-            coordinatorClients.forEach(c -> {
-                try {
-                    c.close();
-                } catch (Exception ignored) {
-                }
-            });
         }
     }
 
@@ -190,7 +180,7 @@ public abstract class TestBase {
 
             String body = r.hasEntity() ? r.readEntity(String.class) : "";
             Assertions.assertTrue(r.getStatus() >= 200 && r.getStatus() < 300,
-                    "Failed to arm hold on " + coordinatorBase + " status=" + r.getStatus() + " body=" + body);
+                    "Failed to hold on " + coordinatorBase + " status=" + r.getStatus() + " body=" + body);
         } finally {
             if (r != null)
                 r.close();
