@@ -2,7 +2,9 @@ package io.narayana.lra.ha.participants;
 
 import static org.eclipse.microprofile.lra.annotation.ws.rs.LRA.LRA_HTTP_CONTEXT_HEADER;
 
-import io.narayana.lra.client.internal.NarayanaLRAClient;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import io.narayana.lra.client.NarayanaLRAClient;
 import io.naryana.lra.ha.LRAParticipant;
 import jakarta.enterprise.context.control.ActivateRequestContext;
 import jakarta.inject.Inject;
@@ -35,7 +37,7 @@ public abstract class TestBase {
     protected List<URI> lrasToAfterFinish;
 
     @Inject
-    @ConfigProperty(name = "lra.coordinator.urls")
+    @ConfigProperty(name = "quarkus.narayana-lra.coordinator-url")
     List<URI> coordinatorUris;
 
     protected List<NarayanaLRAClient> coordinatorClients;
@@ -68,6 +70,28 @@ public abstract class TestBase {
         }
         if (client != null) {
             client.close();
+        }
+    }
+
+    protected List<String> getActiveIds(URI coordinatorBase) {
+        Response r = null;
+        try {
+            r = client.target(coordinatorBase)
+                    .path("active/ids")
+                    .request(MediaType.APPLICATION_JSON)
+                    .get();
+
+            String json = r.readEntity(String.class);
+
+            Assertions.assertEquals(200, r.getStatus(), json);
+
+            return new ObjectMapper().readValue(json, new TypeReference<List<String>>() {
+            });
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to fetch active ids from " + coordinatorBase, e);
+        } finally {
+            if (r != null)
+                r.close();
         }
     }
 

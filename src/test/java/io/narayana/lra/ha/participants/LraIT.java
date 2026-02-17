@@ -6,7 +6,8 @@ import io.quarkus.test.common.http.TestHTTPResource;
 import io.quarkus.test.junit.QuarkusTest;
 import java.net.URI;
 import java.time.temporal.ChronoUnit;
-import org.eclipse.microprofile.lra.annotation.LRAStatus;
+import java.util.ArrayList;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,7 +22,6 @@ class LraIT extends TestBase {
 
     @Test
     void testLraDuplicates() {
-        snapshotAllLrasAcrossCoordinators();
         holdAfterCurrentPush(coordinatorUris.get(0), 5000, "io.naryana.lra.ha.LRAParticipant#bookGame", 2);
         holdAfterCurrentPush(coordinatorUris.get(1), 5000, "io.naryana.lra.ha.LRAParticipant#bookGame", 1);
         URI lra = lraClient.startLRAWithRetryFlag(
@@ -30,11 +30,11 @@ class LraIT extends TestBase {
                 30L,
                 ChronoUnit.SECONDS,
                 true);
-        snapshotAllLrasAcrossCoordinators();
-
-        log.info("Started: {}", lra);
 
         lrasToAfterFinish.add(lra);
-        assertEquals(LRAStatus.Active, lraClient.getStatus(lra));
+        List<String> all = new ArrayList<>(getActiveIds(coordinatorUris.getFirst()));
+
+        long count = all.size();
+        assertEquals(1, count, "Expected exactly one active LRA " + " but got " + count + " ids=" + all);
     }
 }
