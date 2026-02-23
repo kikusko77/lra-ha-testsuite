@@ -37,7 +37,7 @@ public abstract class TestBase {
     protected List<URI> lrasToAfterFinish;
 
     @Inject
-    @ConfigProperty(name = "quarkus.narayana-lra.coordinator-url")
+    @ConfigProperty(name = "lra.coordinator.url")
     List<URI> coordinatorUris;
 
     protected List<NarayanaLRAClient> coordinatorClients;
