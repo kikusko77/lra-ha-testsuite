@@ -68,10 +68,7 @@
       <groupId>org.jboss.narayana.lra</groupId>
       <artifactId>narayana-lra</artifactId>
     </dependency>
-    <dependency>
-      <groupId>org.jboss.narayana.lra</groupId>
-      <artifactId>lra-coordinator-jar</artifactId>
-    </dependency>
+
     <dependency>
       <groupId>org.jboss.narayana.lra</groupId>
       <artifactId>lra-client</artifactId>
@@ -84,24 +81,6 @@
       <scope>test</scope>
     </dependency>
 
-    <dependency>
-      <groupId>org.testcontainers</groupId>
-      <artifactId>testcontainers</artifactId>
-      <version>1.21.3</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.testcontainers</groupId>
-      <artifactId>postgresql</artifactId>
-      <version>1.21.3</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.postgresql</groupId>
-      <artifactId>postgresql</artifactId>
-      <version>42.7.8</version>
-      <scope>test</scope>
-    </dependency>
     <dependency>
       <groupId>com.google.code.gson</groupId>
       <artifactId>gson</artifactId>
@@ -230,18 +209,4 @@
 
     </plugins>
   </build>
-
-  <profiles>
-    <profile>
-      <id>do-not-start-lra-coordinator</id>
-      <activation>
-        <property>
-          <name>!lra.coordinator</name>
-        </property>
-      </activation>
-      <properties>
-        <lra.coordinator.exec.plugin.phase>none</lra.coordinator.exec.plugin.phase>
-      </properties>
-    </profile>
-  </profiles>
 </project>
