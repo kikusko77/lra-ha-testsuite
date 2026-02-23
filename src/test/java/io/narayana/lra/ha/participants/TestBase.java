@@ -185,7 +185,7 @@ public abstract class TestBase {
         return invokeParticipant(baseUri, lraId, resourcePath, expectedStatus, (MultivaluedMap<String, String>) null);
     }
 
-    protected void holdAfterCurrentPush(URI coordinatorBase, long sleepTime, String clientId, Integer timeoutCount) {
+    protected void injectFailure(URI coordinatorBase, long sleepTime, String clientId, Integer timeoutCount) {
         Response r = null;
         try {
             var target = client.target(coordinatorBase)

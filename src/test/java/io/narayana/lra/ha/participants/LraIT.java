@@ -22,8 +22,8 @@ class LraIT extends TestBase {
 
     @Test
     void testLraDuplicates() {
-        holdAfterCurrentPush(coordinatorUris.get(0), 5000, "io.naryana.lra.ha.LRAParticipant#bookGame", 2);
-        holdAfterCurrentPush(coordinatorUris.get(1), 5000, "io.naryana.lra.ha.LRAParticipant#bookGame", 1);
+        injectFailure(coordinatorUris.get(0), 5000, "io.naryana.lra.ha.LRAParticipant#bookGame", 2);
+        injectFailure(coordinatorUris.get(1), 5000, "io.naryana.lra.ha.LRAParticipant#bookGame", 1);
         URI lra = lraClient.startLRA(
                 null,
                 "io.naryana.lra.ha.LRAParticipant#bookGame",
