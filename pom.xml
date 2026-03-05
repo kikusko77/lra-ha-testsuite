@@ -165,7 +165,7 @@
           <useModulePath>false</useModulePath>
           <systemPropertyVariables>
             <lra.internal.client.timeout.start>2</lra.internal.client.timeout.start>
-            <lra.coordinator.url>http://localhost:8081/lra-coordinator,http://localhost:8082/lra-coordinator</lra.coordinator.url>
+            <lra.coordinator.url>http://localhost:8081/lra-coordinator,http://localhost:8082/lra-coordinator,http://localhost:8083/lra-coordinator,http://localhost:8084/lra-coordinator</lra.coordinator.url>
             <lra.coordinator.lb-method>round-robin</lra.coordinator.lb-method>
             <native.image.path>${project.build.directory}/${project.build.finalName}-runner</native.image.path>
             <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
