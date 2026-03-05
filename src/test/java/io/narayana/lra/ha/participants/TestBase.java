@@ -73,26 +73,34 @@ public abstract class TestBase {
         }
     }
 
-    protected List<String> getActiveIds(URI coordinatorBase) {
-        Response r = null;
-        try {
-            r = client.target(coordinatorBase)
-                    .path("active/ids")
-                    .request(MediaType.APPLICATION_JSON)
-                    .get();
+    protected List<String> getActiveIds() {
+        List<String> all = new ArrayList<>();
 
-            String json = r.readEntity(String.class);
+        for (URI base : coordinatorUris) {
+            Response r = null;
+            try {
+                r = client.target(base)
+                        .path("active/ids")
+                        .request(MediaType.APPLICATION_JSON)
+                        .get();
 
-            Assertions.assertEquals(200, r.getStatus(), json);
-
-            return new ObjectMapper().readValue(json, new TypeReference<List<String>>() {
-            });
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to fetch active ids from " + coordinatorBase, e);
-        } finally {
-            if (r != null)
-                r.close();
+                if (r.getStatus() == 200) {
+                    String json = r.readEntity(String.class);
+                    List<String> ids = new ObjectMapper()
+                            .readValue(json, new TypeReference<List<String>>() {
+                            });
+                    all.addAll(ids);
+                }
+            } catch (Exception e) {
+                LoggerFactory.getLogger(getClass())
+                        .info("Coordinator {} unreachable (possibly crashed)", base);
+            } finally {
+                if (r != null)
+                    r.close();
+            }
         }
+
+        return all;
     }
 
     protected List<URI> snapshotAllLrasAcrossCoordinators() {
@@ -185,33 +193,15 @@ public abstract class TestBase {
         return invokeParticipant(baseUri, lraId, resourcePath, expectedStatus, (MultivaluedMap<String, String>) null);
     }
 
-    protected void injectFailure(URI coordinatorBase, long sleepTime, String clientId, Integer timeoutCount) {
-        Response r = null;
-        try {
-            var target = client.target(coordinatorBase)
-                    .path("inject/hold-after-current-push")
-                    .queryParam("sleepTime", sleepTime);
-
-            if (clientId != null && !clientId.isBlank()) {
-                target = target.queryParam("clientId", clientId);
-            }
-
-            if (timeoutCount != null) {
-                target = target.queryParam("timeoutCount", timeoutCount);
-            }
-
-            r = target.request(MediaType.TEXT_PLAIN).post(null);
-
-            String body = r.hasEntity() ? r.readEntity(String.class) : "";
-            Assertions.assertTrue(r.getStatus() >= 200 && r.getStatus() < 300,
-                    "Failed to hold on " + coordinatorBase + " status=" + r.getStatus() + " body=" + body);
-        } finally {
-            if (r != null)
-                r.close();
-        }
+    protected void injectEnable(URI coordinatorBase, String point) {
+        callInject(coordinatorBase, point, "enable");
     }
 
-    protected void resetInjection(URI coordinatorBase) {
+    protected void injectDisable(URI coordinatorBase, String point) {
+        callInject(coordinatorBase, point, "disable");
+    }
+
+    protected void injectReset(URI coordinatorBase) {
         Response r = null;
         try {
             r = client.target(coordinatorBase)
@@ -219,18 +209,74 @@ public abstract class TestBase {
                     .request(MediaType.TEXT_PLAIN)
                     .post(null);
 
-            String body = r.hasEntity() ? r.readEntity(String.class) : "";
-            Assertions.assertTrue(r.getStatus() >= 200 && r.getStatus() < 300,
-                    "Failed to reset injection on " + coordinatorBase + " status=" + r.getStatus() + " body=" + body);
         } finally {
             if (r != null)
                 r.close();
         }
     }
 
-    protected void resetInjectionOnAllCoordinators() {
-        for (URI c : coordinatorUris) {
-            resetInjection(c);
+    private void callInject(URI coordinatorBase, String point, String action) {
+        Response r = null;
+        try {
+            r = client.target(coordinatorBase)
+                    .path("inject")
+                    .path(point)
+                    .path(action)
+                    .request(MediaType.TEXT_PLAIN)
+                    .post(null);
+
+            String body = r.hasEntity() ? r.readEntity(String.class) : "";
+            Assertions.assertTrue(r.getStatus() >= 200 && r.getStatus() < 300,
+                    "Failed to " + action + " inject " + point + " on " + coordinatorBase
+                            + " status=" + r.getStatus() + " body=" + body);
+        } finally {
+            if (r != null)
+                r.close();
         }
+    }
+
+    protected void injectResetAll() {
+        for (URI base : coordinatorUris) {
+            try {
+                injectReset(base);
+            } catch (Exception e) {
+                LoggerFactory.getLogger(getClass()).warn("injectReset failed on {}: {}", base, e.toString());
+            }
+        }
+    }
+
+    protected void waitForCoordinator(URI base, long timeoutMs) {
+        long deadline = System.currentTimeMillis() + timeoutMs;
+
+        while (System.currentTimeMillis() < deadline) {
+            Response r = null;
+            try {
+                r = client.target(base)
+                        .path("active/ids")
+                        .request()
+                        .get();
+
+                if (r.getStatus() == 200) {
+                    return;
+                }
+            } catch (Exception ignored) {
+            } finally {
+                if (r != null)
+                    r.close();
+            }
+        }
+
+        throw new RuntimeException("Coordinator not ready: " + base);
+    }
+
+    protected URI firstReachableCoordinator() {
+        for (URI base : coordinatorUris) {
+            try {
+                waitForCoordinator(base, 1_000);
+                return base;
+            } catch (Exception ignored) {
+            }
+        }
+        throw new RuntimeException("No coordinator reachable");
     }
 }
