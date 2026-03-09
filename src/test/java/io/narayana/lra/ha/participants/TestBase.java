@@ -220,8 +220,8 @@ public abstract class TestBase {
         try {
             r = client.target(coordinatorBase)
                     .path("inject")
-                    .path(point)
                     .path(action)
+                    .queryParam("point", point)
                     .request(MediaType.TEXT_PLAIN)
                     .post(null);
 
