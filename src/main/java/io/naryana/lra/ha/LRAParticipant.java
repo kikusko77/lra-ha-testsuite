@@ -6,6 +6,7 @@
 package io.naryana.lra.ha;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.HeaderParam;
 import jakarta.ws.rs.PUT;
@@ -13,7 +14,11 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.core.Response;
 import java.net.URI;
 import org.eclipse.microprofile.lra.annotation.AfterLRA;
+import org.eclipse.microprofile.lra.annotation.Compensate;
+import org.eclipse.microprofile.lra.annotation.Complete;
+import org.eclipse.microprofile.lra.annotation.Forget;
 import org.eclipse.microprofile.lra.annotation.LRAStatus;
+import org.eclipse.microprofile.lra.annotation.Status;
 import org.eclipse.microprofile.lra.annotation.ws.rs.LRA;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,11 +26,15 @@ import org.slf4j.LoggerFactory;
 @ApplicationScoped
 @Path(LRAParticipant.RESOURCE_PATH)
 public class LRAParticipant {
-    public static final String RESOURCE_PATH = "participant2";
+    public static final String RESOURCE_PATH = "lra-participant";
 
     public static final String CREATE_OR_CONTINUE_LRA = "start-lra";
     public static final String END_EXISTING_LRA = "end-lra";
     public static final String AFTER_LRA = "after-lra";
+    public static final String COMPLETE_LRA = "complete";
+    public static final String COMPENSATE_LRA = "compensate";
+    public static final String LRA_STATUS = "status";
+    public static final String FORGET_LRA = "forget";
     private static final Logger log = LoggerFactory.getLogger(LRAParticipant.class);
 
     @LRA(end = false)
@@ -50,5 +59,37 @@ public class LRAParticipant {
     public Response bookingProcessed(@HeaderParam(LRA.LRA_HTTP_ENDED_CONTEXT_HEADER) URI lraId, LRAStatus status) {
         log.info("AFTER-LRA callback received, lraId={}, status={}", lraId, status);
         return Response.status(Response.Status.OK).entity(lraId.toASCIIString()).build();
+    }
+
+    @Complete
+    @PUT
+    @Path(COMPLETE_LRA)
+    public Response complete(@HeaderParam(LRA.LRA_HTTP_CONTEXT_HEADER) URI lraId) {
+        log.info("COMPLETE callback received, lraId={}", lraId);
+        return Response.ok(Response.Status.OK).build();
+    }
+
+    @Compensate
+    @PUT
+    @Path(COMPENSATE_LRA)
+    public Response compensate(@HeaderParam(LRA.LRA_HTTP_CONTEXT_HEADER) URI lraId) {
+        log.info("COMPENSATE callback received, lraId={}", lraId);
+        return Response.ok(Response.Status.OK).build();
+    }
+
+    @Status
+    @GET
+    @Path(LRA_STATUS)
+    public Response status(@HeaderParam(LRA.LRA_HTTP_CONTEXT_HEADER) URI lraId) {
+        log.info("STATUS callback received, lraId={}", lraId);
+        return Response.ok(Response.Status.OK).build();
+    }
+
+    @Forget
+    @DELETE
+    @Path(FORGET_LRA)
+    public Response forget(@HeaderParam(LRA.LRA_HTTP_CONTEXT_HEADER) URI lraId) {
+        log.info("FORGET callback received, lraId={}", lraId);
+        return Response.ok().build();
     }
 }
