@@ -40,6 +40,10 @@ public abstract class TestBase {
     @ConfigProperty(name = "lra.coordinator.url")
     List<URI> coordinatorUris;
 
+    @Inject
+    @ConfigProperty(name = "narayana.lra.base-uri")
+    String participantBaseUri;
+
     protected List<NarayanaLRAClient> coordinatorClients;
 
     @AfterAll
@@ -65,7 +69,14 @@ public abstract class TestBase {
         for (URI lraToFinish : lrasToAfterFinish) {
             try {
                 lraClient.cancelLRA(lraToFinish);
-            } catch (Exception ignored) {
+                LoggerFactory.getLogger(getClass())
+                        .info("Cleanup request completed for {}", lraToFinish);
+            } catch (jakarta.ws.rs.NotFoundException e) {
+                LoggerFactory.getLogger(getClass())
+                        .info("Cleanup skipped, already gone: {}", lraToFinish);
+            } catch (Exception e) {
+                LoggerFactory.getLogger(getClass())
+                        .error("Cleanup failed for {}", lraToFinish, e);
             }
         }
         if (client != null) {
@@ -278,5 +289,12 @@ public abstract class TestBase {
             }
         }
         throw new RuntimeException("No coordinator reachable");
+    }
+
+    protected URI participantUri(String path) {
+        return UriBuilder.fromUri(participantBaseUri)
+                .path("lra-participant")
+                .path(path)
+                .build();
     }
 }
