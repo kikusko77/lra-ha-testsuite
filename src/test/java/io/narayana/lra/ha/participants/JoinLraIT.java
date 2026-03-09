@@ -55,11 +55,6 @@ class JoinLraIT extends TestBase {
 
     }
 
-    private String buildCompensatorLink(URI compensate, URI complete) {
-        return "<" + compensate.toASCIIString() + ">; rel=\"compensate\"; type=\"text/plain\""
-                + ",<" + complete.toASCIIString() + ">; rel=\"complete\"; type=\"text/plain\"";
-    }
-
     @Test
     void testJoinBeforeSaveCrashStillEnlistsOnce() {
         log.info("Starting testJoinLraIT before save");
