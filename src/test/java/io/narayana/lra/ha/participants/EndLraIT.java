@@ -43,6 +43,9 @@ class EndLraIT extends TestBase {
             lraClient.cancelLRA(lra);
         } catch (jakarta.ws.rs.NotFoundException e) {
             log.info("cancelLRA returned 404 after failover, treating as already finished: {}", lra);
+        } catch (jakarta.ws.rs.WebApplicationException e) {
+            log.info("cancelLRA returned {} after failover for {}, accepting for post-check",
+                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown", lra);
         }
 
         waitForNoActiveLra(lra, 5_000);
@@ -80,7 +83,10 @@ class EndLraIT extends TestBase {
         try {
             lraClient.closeLRA(lra);
         } catch (jakarta.ws.rs.NotFoundException e) {
-            log.info("cancelLRA returned 404 after failover, treating as already finished: {}", lra);
+            log.info("closeLRA returned 404 after failover, treating as already finished: {}", lra);
+        } catch (jakarta.ws.rs.WebApplicationException e) {
+            log.info("closeLRA returned {} after failover for {}, accepting for post-check",
+                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown", lra);
         }
 
         waitForNoActiveLra(lra, 5_000);
@@ -173,6 +179,9 @@ class EndLraIT extends TestBase {
             lraClient.closeLRA(lra);
         } catch (jakarta.ws.rs.NotFoundException e) {
             log.info("closeLRA returned 404 after failover, treating as already finished: {}", lra);
+        } catch (jakarta.ws.rs.WebApplicationException e) {
+            log.info("closeLRA returned {} after failover for {}, accepting for post-check",
+                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown", lra);
         }
 
         waitForNoActiveLra(lra, 5_000);

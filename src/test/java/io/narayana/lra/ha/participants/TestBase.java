@@ -17,8 +17,13 @@ import jakarta.ws.rs.core.MultivaluedMap;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriBuilder;
 import java.net.URI;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
+import org.awaitility.Awaitility;
+import org.awaitility.core.ConditionTimeoutException;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
@@ -62,6 +67,8 @@ public abstract class TestBase {
         coordinatorClients = coordinatorUris.stream()
                 .map(NarayanaLRAClient::new)
                 .toList();
+
+        waitForAllCoordinators(120);
     }
 
     @AfterEach
@@ -288,7 +295,73 @@ public abstract class TestBase {
             } catch (Exception ignored) {
             }
         }
-        throw new RuntimeException("No coordinator reachable");
+        // All coordinators appear to be down — wait for any to recover before giving up.
+        LoggerFactory.getLogger(getClass())
+                .warn("All coordinators unreachable; waiting up to 60 s for one to recover...");
+        return waitForAnyCoordinator(60);
+    }
+
+    /**
+     * Blocks using Awaitility until at least one coordinator responds with HTTP 200,
+     * polling every 2 seconds. Throws {@link ConditionTimeoutException} if none
+     * recover within {@code atMostSeconds}.
+     */
+    protected URI waitForAnyCoordinator(long atMostSeconds) {
+        AtomicReference<URI> found = new AtomicReference<>();
+
+        Awaitility.await("waiting for any coordinator to recover")
+                .atMost(atMostSeconds, TimeUnit.SECONDS)
+                .pollInterval(Duration.ofSeconds(2))
+                .until(() -> {
+                    for (URI base : coordinatorUris) {
+                        Response r = null;
+                        try {
+                            r = client.target(base)
+                                    .path("active/ids")
+                                    .request()
+                                    .get();
+                            if (r.getStatus() == 200) {
+                                found.set(base);
+                                return true;
+                            }
+                        } catch (Exception ignored) {
+                        } finally {
+                            if (r != null)
+                                r.close();
+                        }
+                    }
+                    return false;
+                });
+
+        return found.get();
+    }
+
+    /**
+     * Blocks until every coordinator in the cluster responds with HTTP 200.
+     * Called in {@link #beforeEach()} so each test starts with a fully healthy cluster,
+     * even if a coordinator was crashed by the previous test and is still restarting.
+     */
+    protected void waitForAllCoordinators(long atMostSeconds) {
+        for (URI base : coordinatorUris) {
+            Awaitility.await("waiting for coordinator " + base + " to be ready")
+                    .atMost(atMostSeconds, TimeUnit.SECONDS)
+                    .pollInterval(Duration.ofSeconds(2))
+                    .until(() -> {
+                        Response r = null;
+                        try {
+                            r = client.target(base)
+                                    .path("active/ids")
+                                    .request()
+                                    .get();
+                            return r.getStatus() == 200;
+                        } catch (Exception ignored) {
+                            return false;
+                        } finally {
+                            if (r != null)
+                                r.close();
+                        }
+                    });
+        }
     }
 
     protected URI participantUri(String path) {
