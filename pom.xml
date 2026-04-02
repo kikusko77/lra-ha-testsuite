@@ -141,6 +141,11 @@
       <version>4.2.2</version>
       <scope>test</scope>
     </dependency>
+    <dependency>
+      <groupId>io.vertx</groupId>
+      <artifactId>vertx-web-client</artifactId>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 
   <build>
@@ -171,8 +176,7 @@
           <useModulePath>false</useModulePath>
           <systemPropertyVariables>
             <lra.internal.client.timeout.start>2</lra.internal.client.timeout.start>
-            <lra.coordinator.url>http://localhost:8081/lra-coordinator,http://localhost:8082/lra-coordinator,http://localhost:8083/lra-coordinator,http://localhost:8084/lra-coordinator</lra.coordinator.url>
-            <lra.coordinator.lb-method>round-robin</lra.coordinator.lb-method>
+            <lra.coordinator.url>http://localhost:8080/lra-coordinator</lra.coordinator.url>
             <native.image.path>${project.build.directory}/${project.build.finalName}-runner</native.image.path>
             <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
             <maven.home>${maven.home}</maven.home>

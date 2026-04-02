@@ -1,19 +1,15 @@
 package io.narayana.lra.ha.participants;
 
-import static org.eclipse.microprofile.lra.annotation.ws.rs.LRA.LRA_HTTP_CONTEXT_HEADER;
-
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.narayana.lra.client.NarayanaLRAClient;
-import io.naryana.lra.ha.LRAParticipant;
+import io.narayana.lra.ha.proxy.CoordinatorProxyResource;
+import io.quarkus.test.common.QuarkusTestResource;
 import jakarta.enterprise.context.control.ActivateRequestContext;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.ClientBuilder;
-import jakarta.ws.rs.client.Invocation;
 import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.MultivaluedHashMap;
-import jakarta.ws.rs.core.MultivaluedMap;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriBuilder;
 import java.net.URI;
@@ -32,6 +28,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.TestInstance;
 import org.slf4j.LoggerFactory;
 
+@QuarkusTestResource(CoordinatorProxyResource.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public abstract class TestBase {
 
@@ -41,9 +38,8 @@ public abstract class TestBase {
     protected Client client;
     protected List<URI> lrasToAfterFinish;
 
-    @Inject
-    @ConfigProperty(name = "lra.coordinator.url")
-    List<URI> coordinatorUris;
+    /** Direct URIs of the real coordinator backends, used for fault-injection. */
+    protected List<URI> coordinatorUris;
 
     @Inject
     @ConfigProperty(name = "narayana.lra.base-uri")
@@ -63,6 +59,8 @@ public abstract class TestBase {
     void beforeEach() {
         client = ClientBuilder.newClient();
         lrasToAfterFinish = new ArrayList<>();
+
+        coordinatorUris = CoordinatorProxyResource.getBackends();
 
         coordinatorClients = coordinatorUris.stream()
                 .map(NarayanaLRAClient::new)
@@ -119,96 +117,6 @@ public abstract class TestBase {
         }
 
         return all;
-    }
-
-    protected List<URI> snapshotAllLrasAcrossCoordinators() {
-        List<URI> all = new ArrayList<>();
-        for (int i = 0; i < coordinatorUris.size(); i++) {
-            URI base = coordinatorUris.get(i);
-            Response r = null;
-            try {
-                r = client.target(base)
-                        .request(MediaType.APPLICATION_JSON)
-                        .get();
-
-                String json = r.readEntity(String.class);
-                LoggerFactory.getLogger(getClass())
-                        .info("GET {} -> status={} body={}", base, r.getStatus(), json);
-
-            } finally {
-                if (r != null)
-                    r.close();
-            }
-        }
-        return all;
-    }
-
-    protected void logSnapshot(String label, List<URI> ids) {
-        LoggerFactory.getLogger(getClass())
-                .info("{} total entries (with duplicates): {}", label, ids.size());
-        LoggerFactory.getLogger(getClass())
-                .info("{}: {}", label, ids);
-    }
-
-    protected URI invokeParticipant(URI baseUri,
-            URI lraId,
-            String resourcePath,
-            int expectedStatus,
-            MultivaluedMap<String, String> queryParams) {
-        Response response = null;
-        try {
-            var target = client.target(
-                    UriBuilder.fromUri(baseUri)
-                            .path(LRAParticipant.RESOURCE_PATH)
-                            .path(resourcePath)
-                            .build());
-
-            if (queryParams != null) {
-                for (var e : queryParams.entrySet()) {
-                    for (String v : e.getValue()) {
-                        target = target.queryParam(e.getKey(), v);
-                    }
-                }
-            }
-
-            Invocation.Builder builder = target.request();
-
-            if (lraId != null) {
-                builder.header(LRA_HTTP_CONTEXT_HEADER, lraId.toASCIIString());
-            }
-
-            response = builder.get();
-
-            Assertions.assertTrue(response.hasEntity(), "Expected response to contain LRA id or error message");
-            String responseMessage = response.readEntity(String.class);
-
-            Assertions.assertEquals(expectedStatus, response.getStatus(), responseMessage);
-
-            return URI.create(responseMessage);
-        } finally {
-            if (response != null) {
-                response.close();
-            }
-        }
-    }
-
-    protected URI invokeParticipant(URI baseUri, URI lraId, String resourcePath, int expectedStatus,
-            String... queryKeyVals) {
-        MultivaluedMap<String, String> qp = null;
-
-        if (queryKeyVals != null && queryKeyVals.length > 0) {
-            Assertions.assertEquals(0, queryKeyVals.length % 2, "Query params must be key/value pairs");
-            qp = new MultivaluedHashMap<>();
-            for (int i = 0; i < queryKeyVals.length; i += 2) {
-                qp.add(queryKeyVals[i], queryKeyVals[i + 1]);
-            }
-        }
-
-        return invokeParticipant(baseUri, lraId, resourcePath, expectedStatus, qp);
-    }
-
-    protected URI invokeParticipant(URI baseUri, URI lraId, String resourcePath, int expectedStatus) {
-        return invokeParticipant(baseUri, lraId, resourcePath, expectedStatus, (MultivaluedMap<String, String>) null);
     }
 
     protected void injectEnable(URI coordinatorBase, String point) {

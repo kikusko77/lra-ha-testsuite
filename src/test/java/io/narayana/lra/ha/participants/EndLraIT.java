@@ -2,6 +2,7 @@ package io.narayana.lra.ha.participants;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import io.narayana.lra.LRAConstants;
 import io.quarkus.test.junit.QuarkusTest;
 import java.net.URI;
 import java.time.temporal.ChronoUnit;
@@ -220,11 +221,13 @@ class EndLraIT extends TestBase {
 
     private void waitForNoActiveLra(URI lraId, long timeoutMs) {
         long deadline = System.currentTimeMillis() + timeoutMs;
-        String target = lraId.toASCIIString();
+        String targetLraUid = LRAConstants.getLRAUid(lraId);
 
         while (System.currentTimeMillis() < deadline) {
             List<String> activeIds = getActiveIds();
-            boolean stillActive = activeIds.stream().anyMatch(target::equals);
+            boolean stillActive = activeIds.stream()
+                    .map(LRAConstants::getLRAUid)
+                    .anyMatch(targetLraUid::equals);
 
             if (!stillActive) {
                 return;
