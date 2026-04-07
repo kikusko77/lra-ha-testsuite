@@ -19,7 +19,7 @@ class StartLraIT extends TestBase {
     void testStartLraDuplicates() {
         log.info("StartLraIT: testStartLraDuplicates");
         injectResetAll();
-        injectEnable(firstReachableCoordinator(), InjectPoint.START.name());
+        injectEnable(nextRoutedCoordinator(), InjectPoint.START.name());
         URI lra = lraClient.startLRA(
                 null,
                 "io.naryana.lra.ha.LRAParticipant#bookGame",

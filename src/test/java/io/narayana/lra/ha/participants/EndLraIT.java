@@ -1,8 +1,9 @@
 package io.narayana.lra.ha.participants;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import io.narayana.lra.LRAConstants;
 import io.quarkus.test.junit.QuarkusTest;
 import java.net.URI;
 import java.time.temporal.ChronoUnit;
@@ -21,7 +22,7 @@ class EndLraIT extends TestBase {
         log.info("Starting testCancelLraBeforeSave");
         URI lra = prepareLraWithParticipant("cancel-before");
 
-        injectEnable(firstReachableCoordinator(), InjectPoint.END_BEFORE_SAVE.name());
+        injectEnable(nextRoutedCoordinator(), InjectPoint.END_BEFORE_SAVE.name());
 
         assertDoesNotThrow(() -> lraClient.cancelLRA(lra));
 
@@ -38,7 +39,7 @@ class EndLraIT extends TestBase {
         log.info("Starting testCancelLraAfterSave");
         URI lra = prepareLraWithParticipant("cancel-after");
 
-        injectEnable(firstReachableCoordinator(), InjectPoint.END_AFTER_SAVE.name());
+        injectEnable(nextRoutedCoordinator(), InjectPoint.END_AFTER_SAVE.name());
 
         try {
             lraClient.cancelLRA(lra);
@@ -62,7 +63,7 @@ class EndLraIT extends TestBase {
         log.info("Starting testCloseLraBeforeSave");
         URI lra = prepareLraWithParticipant("close-before");
 
-        injectEnable(firstReachableCoordinator(), InjectPoint.END_BEFORE_SAVE.name());
+        injectEnable(nextRoutedCoordinator(), InjectPoint.END_BEFORE_SAVE.name());
 
         assertDoesNotThrow(() -> lraClient.closeLRA(lra));
 
@@ -79,7 +80,7 @@ class EndLraIT extends TestBase {
         log.info("Starting testCloseLraAfterSave");
         URI lra = prepareLraWithParticipant("close-after");
 
-        injectEnable(firstReachableCoordinator(), InjectPoint.END_AFTER_SAVE.name());
+        injectEnable(nextRoutedCoordinator(), InjectPoint.END_AFTER_SAVE.name());
 
         try {
             lraClient.closeLRA(lra);
@@ -103,7 +104,7 @@ class EndLraIT extends TestBase {
         log.info("Starting testCancelLraDuringCleanup");
         URI lra = prepareLraWithParticipant("cancel-during-cleanup");
 
-        injectEnable(firstReachableCoordinator(), InjectPoint.END_DURING_CLEANUP.name());
+        injectEnable(nextRoutedCoordinator(), InjectPoint.END_DURING_CLEANUP.name());
 
         try {
             lraClient.cancelLRA(lra);
@@ -128,7 +129,7 @@ class EndLraIT extends TestBase {
         log.info("Starting testCancelLraAfterCleanup");
         URI lra = prepareLraWithParticipant("cancel-after-cleanup");
 
-        injectEnable(firstReachableCoordinator(), InjectPoint.END_AFTER_CLEANUP.name());
+        injectEnable(nextRoutedCoordinator(), InjectPoint.END_AFTER_CLEANUP.name());
 
         try {
             lraClient.cancelLRA(lra);
@@ -149,7 +150,7 @@ class EndLraIT extends TestBase {
         log.info("Starting testCloseLraDuringCleanup");
         URI lra = prepareLraWithParticipant("close-during-cleanup");
 
-        injectEnable(firstReachableCoordinator(), InjectPoint.END_DURING_CLEANUP.name());
+        injectEnable(nextRoutedCoordinator(), InjectPoint.END_DURING_CLEANUP.name());
 
         try {
             lraClient.closeLRA(lra);
@@ -174,7 +175,7 @@ class EndLraIT extends TestBase {
         log.info("Starting testCloseLraAfterCleanup");
         URI lra = prepareLraWithParticipant("close-after-cleanup");
 
-        injectEnable(firstReachableCoordinator(), InjectPoint.END_AFTER_CLEANUP.name());
+        injectEnable(nextRoutedCoordinator(), InjectPoint.END_AFTER_CLEANUP.name());
 
         try {
             lraClient.closeLRA(lra);
@@ -217,28 +218,5 @@ class EndLraIT extends TestBase {
         log.info("Participant enlisted, recoveryUrl={}", recoveryUrl);
 
         return lra;
-    }
-
-    private void waitForNoActiveLra(URI lraId, long timeoutMs) {
-        long deadline = System.currentTimeMillis() + timeoutMs;
-        String targetLraUid = LRAConstants.getLRAUid(lraId);
-
-        while (System.currentTimeMillis() < deadline) {
-            List<String> activeIds = getActiveIds();
-            boolean stillActive = activeIds.stream()
-                    .map(LRAConstants::getLRAUid)
-                    .anyMatch(targetLraUid::equals);
-
-            if (!stillActive) {
-                return;
-            }
-
-            try {
-                Thread.sleep(200);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                break;
-            }
-        }
     }
 }

@@ -7,8 +7,10 @@ import io.vertx.core.http.HttpServerRequest;
 import io.vertx.ext.web.client.WebClient;
 import java.io.Closeable;
 import java.net.URI;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Queue;
+import java.util.Set;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.LinkedBlockingDeque;
@@ -43,6 +45,7 @@ public class CoordinatorProxyVertx implements Closeable {
 
     private final List<URI> backends;
     private final int port;
+    private volatile int actualPort;
 
     private final Vertx vertx;
     private final WebClient webClient;
@@ -81,10 +84,11 @@ public class CoordinatorProxyVertx implements Closeable {
 
     /**
      * @param port local port to listen on
-     * @param backends real coordinator base URIs, e.g. {@code http://localhost:8081/lra-coordinator}
+     * @param backends real coordinator base URIs, e.g. {@code http://localhost:<backend-port>/lra-coordinator}
      */
     public CoordinatorProxyVertx(int port, List<URI> backends) {
         this.port = port;
+        this.actualPort = port;
         this.backends = List.copyOf(backends);
         this.vertx = Vertx.vertx();
         this.webClient = WebClient.create(vertx);
@@ -98,6 +102,7 @@ public class CoordinatorProxyVertx implements Closeable {
     /** Starts the server, the dispatcher thread, and the health-check timer. */
     public void start() throws Exception {
         server.listen(port).toCompletionStage().toCompletableFuture().get(5, TimeUnit.SECONDS);
+        actualPort = server.actualPort();
 
         dispatcher = new Thread(this::dispatchLoop, "lra-proxy-vertx-dispatcher");
         dispatcher.setDaemon(true);
@@ -105,12 +110,36 @@ public class CoordinatorProxyVertx implements Closeable {
 
         vertx.setPeriodic(HEALTH_CHECK_MS, id -> checkCrashed());
 
-        LOG.info("CoordinatorProxyVertx started on :{} → {}", port, backends);
+        LOG.info("CoordinatorProxyVertx started on :{} → {}", actualPort, backends);
     }
 
     /** The URL that LRA clients and tests should use. */
     public URI proxyCoordinatorUri() {
-        return URI.create("http://localhost:" + port + "/lra-coordinator");
+        return URI.create("http://127.0.0.1:" + actualPort + "/lra-coordinator");
+    }
+
+    /**
+     * Rebuilds the proxy's backend view from the coordinators that are ready now,
+     * then restores the healthy queue to the natural backend order.
+     */
+    public void resetRoutingOrder(List<Integer> readyIndexes) {
+        healthy.clear();
+        crashed.clear();
+
+        Set<Integer> ready = new HashSet<>(readyIndexes);
+        for (int i = 0; i < backends.size(); i++) {
+            if (ready.contains(i)) {
+                healthy.addLast(i);
+            } else {
+                crashed.add(i);
+            }
+        }
+        LOG.info("Reset proxy routing order: healthy={}, crashed={}", healthy, crashed);
+    }
+
+    /** Returns the backend index that would handle the next proxied request. */
+    public Integer peekNextHealthyIndex() {
+        return healthy.peekFirst();
     }
 
     @Override
@@ -160,15 +189,16 @@ public class CoordinatorProxyVertx implements Closeable {
             if (req.done.get())
                 continue; // already timed out
 
-            Integer idx = healthy.poll();
+            Integer idx;
+            try {
+                idx = healthy.poll(POLL_MS, TimeUnit.MILLISECONDS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return;
+            }
+
             if (idx == null) {
-                queue.addFirst(req); // no coordinator yet — keep at front
-                try {
-                    Thread.sleep(POLL_MS);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    return;
-                }
+                queue.addFirst(req);
                 continue;
             }
 
@@ -224,7 +254,7 @@ public class CoordinatorProxyVertx implements Closeable {
     private void checkCrashed() {
         for (Integer idx : crashed) {
             URI base = backends.get(idx);
-            String url = base.getScheme() + "://" + base.getHost() + ":" + base.getPort() + "/q/health";
+            String url = base.getScheme() + "://" + base.getHost() + ":" + base.getPort() + "/q/health/ready";
 
             webClient.getAbs(url).timeout(HEALTH_CHECK_MS).send()
                     .onSuccess(r -> {

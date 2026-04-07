@@ -15,9 +15,6 @@ services:
 
   coordinator-1:
     image: local-coordinator:latest
-    build:
-      context: ../lra-coordinator-quarkus
-      dockerfile: src/main/docker/Dockerfile.jvm
     depends_on:
       postgres:
         condition: service_healthy
@@ -35,9 +32,6 @@ services:
 
   coordinator-2:
     image: local-coordinator:latest
-    build:
-      context: ../lra-coordinator-quarkus
-      dockerfile: src/main/docker/Dockerfile.jvm
     depends_on:
       postgres:
         condition: service_healthy
@@ -55,9 +49,6 @@ services:
 
   coordinator-3:
     image: local-coordinator:latest
-    build:
-      context: ../lra-coordinator-quarkus
-      dockerfile: src/main/docker/Dockerfile.jvm
     depends_on:
       postgres:
         condition: service_healthy
@@ -75,9 +66,6 @@ services:
 
   coordinator-4:
     image: local-coordinator:latest
-    build:
-      context: ../lra-coordinator-quarkus
-      dockerfile: src/main/docker/Dockerfile.jvm
     depends_on:
       postgres:
         condition: service_healthy

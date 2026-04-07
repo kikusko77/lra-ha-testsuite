@@ -24,9 +24,10 @@ class JoinLraIT extends TestBase {
     void testJoinLraDuplicates() {
         log.info("Starting testJoinLraIT after save");
         injectResetAll();
+        String clientId = uniqueClientId("bookGame");
         URI lra = lraClient.startLRA(
                 null,
-                "io.naryana.lra.ha.LRAParticipant#bookGame",
+                clientId,
                 30L,
                 ChronoUnit.SECONDS,
                 true);
@@ -38,7 +39,9 @@ class JoinLraIT extends TestBase {
         URI completeUri = participantUri("complete");
         String compensatorLink = buildCompensatorLink(compensateUri, completeUri);
 
-        injectEnable(firstReachableCoordinator(), InjectPoint.JOIN_AFTER_SAVE.name());
+        URI injectedCoordinator = nextRoutedCoordinator();
+        log.info("Injecting JOIN_AFTER_SAVE on coordinator {}", injectedCoordinator);
+        injectEnable(injectedCoordinator, InjectPoint.JOIN_AFTER_SAVE.name());
         log.info("Injected join hold, calling enlistCompensator again (same participant, will timeout+retry)");
 
         URI recoveryUrl = lraClient.enlistCompensator(lra, 30L, compensatorLink, new StringBuilder());
@@ -59,21 +62,23 @@ class JoinLraIT extends TestBase {
     void testJoinBeforeSaveCrashStillEnlistsOnce() {
         log.info("Starting testJoinLraIT before save");
         injectResetAll();
+        String clientId = uniqueClientId("bookGame");
         URI lra = lraClient.startLRA(
                 null,
-                "io.naryana.lra.ha.LRAParticipant#bookGame",
+                clientId,
                 30L,
                 ChronoUnit.SECONDS,
                 true);
 
-        lrasToAfterFinish.add(lra);
         log.info("Started LRA: {}", lra);
 
         URI compensateUri = participantUri("compensate");
         URI completeUri = participantUri("complete");
         String compensatorLink = buildCompensatorLink(compensateUri, completeUri);
 
-        injectEnable(firstReachableCoordinator(), InjectPoint.JOIN_BEFORE_SAVE.name());
+        URI injectedCoordinator = nextRoutedCoordinator();
+        log.info("Injecting JOIN_BEFORE_SAVE on coordinator {}", injectedCoordinator);
+        injectEnable(injectedCoordinator, InjectPoint.JOIN_BEFORE_SAVE.name());
 
         URI recoveryUrl = lraClient.enlistCompensator(lra, 30L, compensatorLink, new StringBuilder());
         assertNotNull(recoveryUrl);
@@ -88,5 +93,10 @@ class JoinLraIT extends TestBase {
                 1,
                 unique,
                 "Expected exactly one unique active LRA across cluster but got ids=" + all);
+        lrasToAfterFinish.add(lra);
+    }
+
+    private String uniqueClientId(String action) {
+        return "io.naryana.lra.ha.LRAParticipant#" + action + "-" + System.nanoTime();
     }
 }

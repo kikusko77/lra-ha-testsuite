@@ -2,6 +2,7 @@ package io.narayana.lra.ha.participants;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.narayana.lra.LRAConstants;
 import io.narayana.lra.client.NarayanaLRAClient;
 import io.narayana.lra.ha.proxy.CoordinatorProxyResource;
 import io.quarkus.test.common.QuarkusTestResource;
@@ -31,6 +32,7 @@ import org.slf4j.LoggerFactory;
 @QuarkusTestResource(CoordinatorProxyResource.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public abstract class TestBase {
+    private static final ObjectMapper JSON = new ObjectMapper();
 
     @Inject
     NarayanaLRAClient lraClient;
@@ -44,8 +46,6 @@ public abstract class TestBase {
     @Inject
     @ConfigProperty(name = "narayana.lra.base-uri")
     String participantBaseUri;
-
-    protected List<NarayanaLRAClient> coordinatorClients;
 
     @AfterAll
     @ActivateRequestContext
@@ -62,11 +62,8 @@ public abstract class TestBase {
 
         coordinatorUris = CoordinatorProxyResource.getBackends();
 
-        coordinatorClients = coordinatorUris.stream()
-                .map(NarayanaLRAClient::new)
-                .toList();
-
-        waitForAllCoordinators(120);
+        ensureCoordinatorAvailability(120);
+        CoordinatorProxyResource.resetProxyRouting();
     }
 
     @AfterEach
@@ -102,7 +99,7 @@ public abstract class TestBase {
 
                 if (r.getStatus() == 200) {
                     String json = r.readEntity(String.class);
-                    List<String> ids = new ObjectMapper()
+                    List<String> ids = JSON
                             .readValue(json, new TypeReference<List<String>>() {
                             });
                     all.addAll(ids);
@@ -171,42 +168,46 @@ public abstract class TestBase {
         }
     }
 
-    protected void waitForCoordinator(URI base, long timeoutMs) {
-        long deadline = System.currentTimeMillis() + timeoutMs;
-
-        while (System.currentTimeMillis() < deadline) {
-            Response r = null;
-            try {
-                r = client.target(base)
-                        .path("active/ids")
-                        .request()
-                        .get();
-
-                if (r.getStatus() == 200) {
-                    return;
-                }
-            } catch (Exception ignored) {
-            } finally {
-                if (r != null)
-                    r.close();
-            }
-        }
-
-        throw new RuntimeException("Coordinator not ready: " + base);
+    protected void resetProxyRouting() {
+        CoordinatorProxyResource.resetProxyRouting();
     }
 
-    protected URI firstReachableCoordinator() {
+    protected URI nextRoutedCoordinator() {
+        return CoordinatorProxyResource.nextRoutedBackend();
+    }
+
+    protected URI ensureCoordinatorAvailability(long atMostSeconds) {
+        URI reachable = findReachableCoordinator();
+        if (reachable != null) {
+            return reachable;
+        }
+
+        LoggerFactory.getLogger(getClass())
+                .warn("All coordinators unreachable; waiting up to {} s for one to recover...", atMostSeconds);
+        return waitForAnyCoordinator(atMostSeconds);
+    }
+
+    private URI findReachableCoordinator() {
         for (URI base : coordinatorUris) {
-            try {
-                waitForCoordinator(base, 1_000);
+            if (isCoordinatorReachable(base)) {
                 return base;
-            } catch (Exception ignored) {
             }
         }
-        // All coordinators appear to be down — wait for any to recover before giving up.
-        LoggerFactory.getLogger(getClass())
-                .warn("All coordinators unreachable; waiting up to 60 s for one to recover...");
-        return waitForAnyCoordinator(60);
+        return null;
+    }
+
+    private boolean isCoordinatorReachable(URI base) {
+        URI healthUri = URI.create("http://" + base.getHost() + ":" + base.getPort() + "/q/health/ready");
+        Response r = null;
+        try {
+            r = client.target(healthUri).request().get();
+            return r.getStatus() == 200;
+        } catch (Exception ignored) {
+            return false;
+        } finally {
+            if (r != null)
+                r.close();
+        }
     }
 
     /**
@@ -221,22 +222,10 @@ public abstract class TestBase {
                 .atMost(atMostSeconds, TimeUnit.SECONDS)
                 .pollInterval(Duration.ofSeconds(2))
                 .until(() -> {
-                    for (URI base : coordinatorUris) {
-                        Response r = null;
-                        try {
-                            r = client.target(base)
-                                    .path("active/ids")
-                                    .request()
-                                    .get();
-                            if (r.getStatus() == 200) {
-                                found.set(base);
-                                return true;
-                            }
-                        } catch (Exception ignored) {
-                        } finally {
-                            if (r != null)
-                                r.close();
-                        }
+                    URI reachable = findReachableCoordinator();
+                    if (reachable != null) {
+                        found.set(reachable);
+                        return true;
                     }
                     return false;
                 });
@@ -245,30 +234,31 @@ public abstract class TestBase {
     }
 
     /**
-     * Blocks until every coordinator in the cluster responds with HTTP 200.
-     * Called in {@link #beforeEach()} so each test starts with a fully healthy cluster,
-     * even if a coordinator was crashed by the previous test and is still restarting.
+     * Blocks until every coordinator in the cluster reports ready on
+     * {@code /q/health/ready}. Use this only in tests that explicitly require
+     * the full cluster to be up.
      */
     protected void waitForAllCoordinators(long atMostSeconds) {
         for (URI base : coordinatorUris) {
             Awaitility.await("waiting for coordinator " + base + " to be ready")
                     .atMost(atMostSeconds, TimeUnit.SECONDS)
                     .pollInterval(Duration.ofSeconds(2))
-                    .until(() -> {
-                        Response r = null;
-                        try {
-                            r = client.target(base)
-                                    .path("active/ids")
-                                    .request()
-                                    .get();
-                            return r.getStatus() == 200;
-                        } catch (Exception ignored) {
-                            return false;
-                        } finally {
-                            if (r != null)
-                                r.close();
-                        }
-                    });
+                    .until(() -> isCoordinatorReachable(base));
+        }
+    }
+
+    protected void waitForNoActiveLra(URI lraId, long timeoutMs) {
+        String targetLraUid = LRAConstants.getLRAUid(lraId);
+
+        try {
+            Awaitility.await("waiting for LRA " + targetLraUid + " to leave the active list")
+                    .atMost(Duration.ofMillis(timeoutMs))
+                    .pollInterval(Duration.ofMillis(200))
+                    .until(() -> getActiveIds().stream()
+                            .map(LRAConstants::getLRAUid)
+                            .noneMatch(targetLraUid::equals));
+        } catch (ConditionTimeoutException ignored) {
+            // Preserve the previous helper semantics: callers do the follow-up assertions.
         }
     }
 
@@ -282,5 +272,66 @@ public abstract class TestBase {
     protected String buildCompensatorLink(URI compensate, URI complete) {
         return "<" + compensate.toASCIIString() + ">; rel=\"compensate\"; type=\"text/plain\""
                 + ",<" + complete.toASCIIString() + ">; rel=\"complete\"; type=\"text/plain\"";
+    }
+
+    protected String buildCompensatorLinkWithStatus(URI compensate, URI complete, URI status) {
+        return "<" + compensate.toASCIIString() + ">; rel=\"compensate\"; type=\"text/plain\""
+                + ",<" + complete.toASCIIString() + ">; rel=\"complete\"; type=\"text/plain\""
+                + ",<" + status.toASCIIString() + ">; rel=\"status\"; type=\"text/plain\"";
+    }
+
+    /**
+     * Resets all in-memory state in the participant bean (idempotency maps,
+     * async state, unreachable counters). Call this at the start of each
+     * compensate test for a clean slate.
+     */
+    protected void resetParticipantState() {
+        Response r = null;
+        try {
+            r = client.target(participantUri(io.naryana.lra.ha.LRAParticipant.RESET_PARTICIPANT_STATE))
+                    .request()
+                    .post(null);
+        } finally {
+            if (r != null)
+                r.close();
+        }
+    }
+
+    /**
+     * Returns the total number of times the idempotent compensate endpoint was
+     * called for the given LRA (including coordinator retries).
+     */
+    protected int getCompensateCallCount(URI lraId) {
+        return client.target(participantUri(io.naryana.lra.ha.LRAParticipant.COMPENSATE_CALL_COUNT))
+                .queryParam("lraId", lraId.toASCIIString())
+                .request()
+                .get(Integer.class);
+    }
+
+    /**
+     * Returns {@code 1} if the idempotent compensate side effect was performed
+     * for the given LRA, {@code 0} otherwise.
+     */
+    protected int getCompensateWorkDone(URI lraId) {
+        return client.target(participantUri(io.naryana.lra.ha.LRAParticipant.COMPENSATE_WORK_DONE))
+                .queryParam("lraId", lraId.toASCIIString())
+                .request()
+                .get(Integer.class);
+    }
+
+    /** Returns how many times the async compensate endpoint was called for the given LRA. */
+    protected int getAsyncCompensateCallCount(URI lraId) {
+        return client.target(participantUri(io.naryana.lra.ha.LRAParticipant.ASYNC_COMPENSATE_CALL_COUNT))
+                .queryParam("lraId", lraId.toASCIIString())
+                .request()
+                .get(Integer.class);
+    }
+
+    /** Returns how many times the async status endpoint was polled for the given LRA. */
+    protected int getAsyncStatusCallCount(URI lraId) {
+        return client.target(participantUri(io.naryana.lra.ha.LRAParticipant.ASYNC_STATUS_CALL_COUNT))
+                .queryParam("lraId", lraId.toASCIIString())
+                .request()
+                .get(Integer.class);
     }
 }
