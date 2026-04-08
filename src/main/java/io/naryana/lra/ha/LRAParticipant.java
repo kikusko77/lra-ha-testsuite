@@ -55,30 +55,47 @@ public class LRAParticipant {
      * subsequent calls return 200. Simulates a participant crash that recovers.
      */
     public static final String COMPENSATE_UNREACHABLE = "compensate-unreachable";
-    /** Diagnostic: total times compensate-idempotent was called for a given LRA. */
-    public static final String COMPENSATE_CALL_COUNT = "compensate-call-count";
+
+    /** Idempotent complete: side effect runs once per LRA regardless of how many times called. */
+    public static final String COMPLETE_IDEMPOTENT = "complete-idempotent";
+    /** Async complete: returns 202, status reported via STATUS_FOR_ASYNC_COMPLETE. */
+    public static final String COMPLETE_ASYNC = "complete-async";
+    /** Status endpoint for the async complete path. */
+    public static final String STATUS_FOR_ASYNC_COMPLETE = "status-for-async-complete";
+    /** Failing complete: always returns 409 → FailedToComplete. */
+    public static final String COMPLETE_FAIL = "complete-fail";
+    /**
+     * Transient-failure complete: first call per LRA returns 503,
+     * subsequent calls return 200. Simulates a participant crash that recovers.
+     */
+    public static final String COMPLETE_UNREACHABLE = "complete-unreachable";
+
+    /** Diagnostic: total times the idempotent endpoint (compensate or complete) was called for a given LRA. */
+    public static final String IDEMPOTENT_CALL_COUNT = "idempotent-call-count";
     /** Diagnostic: whether the idempotent work was actually performed (0 or 1). */
-    public static final String COMPENSATE_WORK_DONE = "compensate-work-done";
-    /** Diagnostic: total times compensate-async was called for a given LRA. */
-    public static final String ASYNC_COMPENSATE_CALL_COUNT = "async-compensate-call-count";
-    /** Diagnostic: total times status-for-async was polled for a given LRA. */
+    public static final String IDEMPOTENT_WORK_DONE = "idempotent-work-done";
+    /** Diagnostic: total times an async compensate or complete endpoint was called for a given LRA. */
+    public static final String ASYNC_CALL_COUNT = "async-call-count";
+    /** Diagnostic: total times a status endpoint was polled for a given LRA. */
     public static final String ASYNC_STATUS_CALL_COUNT = "async-status-call-count";
     /** Control: reset all participant test state. */
     public static final String RESET_PARTICIPANT_STATE = "reset-participant-state";
 
     private static final Logger log = LoggerFactory.getLogger(LRAParticipant.class);
-    /** Total calls per LRA (including repeats). */
+    /** Total idempotent-endpoint calls per LRA (used by both compensate-idempotent and complete-idempotent). */
     private final ConcurrentHashMap<String, AtomicInteger> idempotentCallCounts = new ConcurrentHashMap<>();
-    /** LRAs for which the actual side effect has been executed (at most once). */
+    /** LRAs for which the idempotent side effect has been executed (at most once). */
     private final Set<String> idempotentWorkDone = ConcurrentHashMap.newKeySet();
 
     /** LRAs for which compensate-async has been called (used by status-for-async). */
     private final Set<String> asyncCompensateCalled = ConcurrentHashMap.newKeySet();
-    /** Total compensate-async calls per LRA (including retries/replays). */
-    private final ConcurrentHashMap<String, AtomicInteger> asyncCompensateCallCounts = new ConcurrentHashMap<>();
-    /** Total status-for-async polls per LRA. */
+    /** LRAs for which complete-async has been called (used by status-for-async-complete). */
+    private final Set<String> asyncCompleteCalled = ConcurrentHashMap.newKeySet();
+    /** Total async-endpoint calls per LRA (shared by compensate-async and complete-async). */
+    private final ConcurrentHashMap<String, AtomicInteger> asyncCallCounts = new ConcurrentHashMap<>();
+    /** Total status-endpoint polls per LRA (shared by both status endpoints). */
     private final ConcurrentHashMap<String, AtomicInteger> asyncStatusCallCounts = new ConcurrentHashMap<>();
-    /** Call count per LRA; first call returns 503, later calls return 200. */
+    /** Call count per LRA; first call returns 503, later calls return 200 (shared by both unreachable endpoints). */
     private final ConcurrentHashMap<String, AtomicInteger> unreachableCallCounts = new ConcurrentHashMap<>();
 
     @LRA(end = false)
@@ -169,7 +186,7 @@ public class LRAParticipant {
     @Path(COMPENSATE_ASYNC)
     public Response compensateAsync(@HeaderParam(LRA.LRA_HTTP_CONTEXT_HEADER) URI lraId) {
         String uid = lraId.toASCIIString();
-        int totalCalls = asyncCompensateCallCounts
+        int totalCalls = asyncCallCounts
                 .computeIfAbsent(uid, k -> new AtomicInteger())
                 .incrementAndGet();
         asyncCompensateCalled.add(uid);
@@ -227,47 +244,126 @@ public class LRAParticipant {
         return Response.ok(ParticipantStatus.Compensated.name()).build();
     }
 
-    // =========================================================================
-    // Diagnostic endpoints (called directly by tests, not by the coordinator)
-    // =========================================================================
+    /**
+     * Idempotent complete — safe to call multiple times.
+     * Shares {@code idempotentCallCounts} and {@code idempotentWorkDone} with
+     * {@link #compensateIdempotent}; safe because each test uses a unique lraId.
+     */
+    @Complete
+    @PUT
+    @Path(COMPLETE_IDEMPOTENT)
+    public Response completeIdempotent(@HeaderParam(LRA.LRA_HTTP_CONTEXT_HEADER) URI lraId) {
+        String uid = lraId.toASCIIString();
+        int totalCalls = idempotentCallCounts
+                .computeIfAbsent(uid, k -> new AtomicInteger())
+                .incrementAndGet();
+        boolean firstTime = idempotentWorkDone.add(uid);
+        if (firstTime) {
+            log.info("COMPLETE-IDEMPOTENT: doing work for lraId={} (call #{})", lraId, totalCalls);
+        } else {
+            log.info("COMPLETE-IDEMPOTENT: skipping duplicate work for lraId={} (call #{})", lraId, totalCalls);
+        }
+        return Response.ok(ParticipantStatus.Completed.name()).build();
+    }
 
     /**
-     * Returns the total number of times {@link #compensateIdempotent} was called
-     * for the given LRA (including duplicate retries). The {@code lraId} query
-     * parameter must be the full LRA URI string.
+     * Async complete — returns 202 Accepted immediately and records the call.
+     * The coordinator must poll {@link #statusForAsyncComplete} to learn when completion is done.
+     */
+    @Complete
+    @PUT
+    @Path(COMPLETE_ASYNC)
+    public Response completeAsync(@HeaderParam(LRA.LRA_HTTP_CONTEXT_HEADER) URI lraId) {
+        String uid = lraId.toASCIIString();
+        int totalCalls = asyncCallCounts
+                .computeIfAbsent(uid, k -> new AtomicInteger())
+                .incrementAndGet();
+        asyncCompleteCalled.add(uid);
+        log.info("COMPLETE-ASYNC called for lraId={} (call #{}), returning 202", lraId, totalCalls);
+        return Response.accepted().build();
+    }
+
+    /**
+     * Status endpoint for the async complete path.
+     * Reports Active until {@link #completeAsync} has been called, then Completed.
+     */
+    @Status
+    @GET
+    @Path(STATUS_FOR_ASYNC_COMPLETE)
+    public Response statusForAsyncComplete(@HeaderParam(LRA.LRA_HTTP_CONTEXT_HEADER) URI lraId) {
+        String uid = lraId.toASCIIString();
+        int totalCalls = asyncStatusCallCounts
+                .computeIfAbsent(uid, k -> new AtomicInteger())
+                .incrementAndGet();
+        ParticipantStatus ps = asyncCompleteCalled.contains(uid)
+                ? ParticipantStatus.Completed
+                : ParticipantStatus.Active;
+        log.info("STATUS-FOR-ASYNC-COMPLETE for lraId={} (call #{}) → {}", lraId, totalCalls, ps);
+        return Response.ok(ps.name()).build();
+    }
+
+    /** Always returns 409 Conflict to force the LRA into FailedToComplete state. */
+    @Complete
+    @PUT
+    @Path(COMPLETE_FAIL)
+    public Response completeFail(@HeaderParam(LRA.LRA_HTTP_CONTEXT_HEADER) URI lraId) {
+        log.info("COMPLETE-FAIL called for lraId={}, returning 409", lraId);
+        return Response.status(Response.Status.CONFLICT)
+                .entity(ParticipantStatus.FailedToComplete.name())
+                .build();
+    }
+
+    /** Returns 503 on the first call and 200 on subsequent calls, simulating a temporary failure. */
+    @Complete
+    @PUT
+    @Path(COMPLETE_UNREACHABLE)
+    public Response completeUnreachable(@HeaderParam(LRA.LRA_HTTP_CONTEXT_HEADER) URI lraId) {
+        String uid = lraId.toASCIIString();
+        int call = unreachableCallCounts
+                .computeIfAbsent(uid, k -> new AtomicInteger())
+                .incrementAndGet();
+        if (call == 1) {
+            log.warn("COMPLETE-UNREACHABLE: simulating crash on first call for lraId={}", lraId);
+            return Response.status(503).build();
+        }
+        log.info("COMPLETE-UNREACHABLE: recovered on call #{} for lraId={}", call, lraId);
+        return Response.ok(ParticipantStatus.Completed.name()).build();
+    }
+
+    /**
+     * Returns the total number of times an idempotent endpoint ({@link #compensateIdempotent}
+     * or {@link #completeIdempotent}) was called for the given LRA, including retries.
      */
     @GET
-    @Path(COMPENSATE_CALL_COUNT)
-    public int compensateCallCount(@QueryParam("lraId") String lraId) {
+    @Path(IDEMPOTENT_CALL_COUNT)
+    public int idempotentCallCount(@QueryParam("lraId") String lraId) {
         AtomicInteger count = idempotentCallCounts.get(lraId);
         return count == null ? 0 : count.get();
     }
 
     /**
-     * Returns {@code 1} if the idempotent side effect was performed for the given
-     * LRA, {@code 0} otherwise. This is always {@code ≤ 1} for a correct idempotent
-     * implementation regardless of how many times the coordinator retried.
+     * Returns {@code 1} if the idempotent side effect was performed for the given LRA,
+     * {@code 0} otherwise. Always {@code ≤ 1} for a correct idempotent implementation.
      */
     @GET
-    @Path(COMPENSATE_WORK_DONE)
-    public int compensateWorkDone(@QueryParam("lraId") String lraId) {
+    @Path(IDEMPOTENT_WORK_DONE)
+    public int idempotentWorkDone(@QueryParam("lraId") String lraId) {
         return idempotentWorkDone.contains(lraId) ? 1 : 0;
     }
 
     /**
-     * Returns the total number of times {@link #compensateAsync} was called for
-     * the given LRA, including retries or recovery replays.
+     * Returns the total number of times an async endpoint ({@link #compensateAsync}
+     * or {@link #completeAsync}) was called for the given LRA, including retries.
      */
     @GET
-    @Path(ASYNC_COMPENSATE_CALL_COUNT)
-    public int asyncCompensateCallCount(@QueryParam("lraId") String lraId) {
-        AtomicInteger count = asyncCompensateCallCounts.get(lraId);
+    @Path(ASYNC_CALL_COUNT)
+    public int asyncCallCount(@QueryParam("lraId") String lraId) {
+        AtomicInteger count = asyncCallCounts.get(lraId);
         return count == null ? 0 : count.get();
     }
 
     /**
-     * Returns the total number of times {@link #statusForAsync} was polled for
-     * the given LRA.
+     * Returns the total number of times a status endpoint was polled for the given LRA.
      */
     @GET
     @Path(ASYNC_STATUS_CALL_COUNT)
@@ -277,8 +373,8 @@ public class LRAParticipant {
     }
 
     /**
-     * Resets all in-memory compensation state. Call this at the start of each
-     * compensate test to get a clean slate.
+     * Resets all in-memory participant state. Call this at the start of each test
+     * for a clean slate.
      */
     @POST
     @Path(RESET_PARTICIPANT_STATE)
@@ -286,7 +382,8 @@ public class LRAParticipant {
         idempotentCallCounts.clear();
         idempotentWorkDone.clear();
         asyncCompensateCalled.clear();
-        asyncCompensateCallCounts.clear();
+        asyncCompleteCalled.clear();
+        asyncCallCounts.clear();
         asyncStatusCallCounts.clear();
         unreachableCallCounts.clear();
         log.info("Participant state reset");

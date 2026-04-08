@@ -1,7 +1,6 @@
 package io.narayana.lra.ha.proxy;
 
 import io.quarkus.test.common.QuarkusTestResourceLifecycleManager;
-
 import java.io.Closeable;
 import java.io.IOException;
 import java.net.URI;
@@ -13,7 +12,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionTimeoutException;
 import org.slf4j.Logger;

@@ -8,7 +8,6 @@ import io.narayana.lra.LRAConstants;
 import io.naryana.lra.ha.LRAParticipant;
 import io.quarkus.test.junit.QuarkusTest;
 import java.net.URI;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
@@ -41,7 +40,7 @@ class CompensateIT extends TestBase {
     @Test
     void testCompensateHappyPath() {
         log.info("CompensateIT: testCompensateHappyPath");
-        URI lra = prepareLra("happy");
+        URI lra = prepareCompensateLra("compensate-happy", LRAParticipant.COMPENSATE_LRA);
 
         assertDoesNotThrow(() -> lraClient.cancelLRA(lra));
 
@@ -53,15 +52,15 @@ class CompensateIT extends TestBase {
     @Test
     void testIdempotentCompensate_happyPath() {
         log.info("CompensateIT: testIdempotentCompensate_happyPath");
-        URI lra = prepareLraIdempotent("idempotent-happy");
+        URI lra = prepareCompensateLra("idempotent-happy", LRAParticipant.COMPENSATE_IDEMPOTENT);
 
         assertDoesNotThrow(() -> lraClient.cancelLRA(lra));
 
         waitForNoActiveLra(lra, LRA_GONE_FAST_MS);
 
-        assertEquals(1, getCompensateCallCount(lra),
+        assertEquals(1, getIdempotentCallCount(lra),
                 "Idempotent compensate should be called exactly once in the happy path");
-        assertEquals(1, getCompensateWorkDone(lra),
+        assertEquals(1, getIdempotentWorkDone(lra),
                 "Side effect must be performed exactly once");
     }
 
@@ -72,7 +71,7 @@ class CompensateIT extends TestBase {
     @Test
     void testIdempotentCompensate_coordinatorCrashDuringCleanup() {
         log.info("CompensateIT: testIdempotentCompensate_coordinatorCrashDuringCleanup");
-        URI lra = prepareLraIdempotent("idempotent-during-cleanup");
+        URI lra = prepareCompensateLra("idempotent-during-cleanup", LRAParticipant.COMPENSATE_IDEMPOTENT);
 
         injectEnable(nextRoutedCoordinator(), InjectPoint.END_DURING_CLEANUP.name());
 
@@ -86,8 +85,8 @@ class CompensateIT extends TestBase {
         ensureCoordinatorAvailability(CRASH_RECOVERY_WAIT_S);
         waitForNoActiveLra(lra, LRA_GONE_WAIT_MS);
 
-        int callCount = getCompensateCallCount(lra);
-        int workDone = getCompensateWorkDone(lra);
+        int callCount = getIdempotentCallCount(lra);
+        int workDone = getIdempotentWorkDone(lra);
 
         log.info("After crash recovery: callCount={}, workDone={}", callCount, workDone);
 
@@ -105,7 +104,7 @@ class CompensateIT extends TestBase {
     @Test
     void testIdempotentCompensate_coordinatorCrashAfterSave() {
         log.info("CompensateIT: testIdempotentCompensate_coordinatorCrashAfterSave");
-        URI lra = prepareLraIdempotent("idempotent-after-save");
+        URI lra = prepareCompensateLra("idempotent-after-save", LRAParticipant.COMPENSATE_IDEMPOTENT);
 
         injectEnable(nextRoutedCoordinator(), InjectPoint.END_AFTER_SAVE.name());
 
@@ -121,7 +120,7 @@ class CompensateIT extends TestBase {
         ensureCoordinatorAvailability(CRASH_RECOVERY_WAIT_S);
         waitForNoActiveLra(lra, LRA_GONE_WAIT_MS);
 
-        assertEquals(1, getCompensateWorkDone(lra),
+        assertEquals(1, getIdempotentWorkDone(lra),
                 "Side effect must be performed exactly once after crash-and-recovery");
     }
 
@@ -132,7 +131,7 @@ class CompensateIT extends TestBase {
     @Test
     void testIdempotentCompensate_coordinatorCrashBeforeSave() {
         log.info("CompensateIT: testIdempotentCompensate_coordinatorCrashBeforeSave");
-        URI lra = prepareLraIdempotent("idempotent-before-save");
+        URI lra = prepareCompensateLra("idempotent-before-save", LRAParticipant.COMPENSATE_IDEMPOTENT);
 
         injectEnable(nextRoutedCoordinator(), InjectPoint.END_BEFORE_SAVE.name());
 
@@ -146,7 +145,7 @@ class CompensateIT extends TestBase {
         ensureCoordinatorAvailability(CRASH_RECOVERY_WAIT_S);
         waitForNoActiveLra(lra, LRA_GONE_WAIT_MS);
 
-        assertEquals(1, getCompensateWorkDone(lra),
+        assertEquals(1, getIdempotentWorkDone(lra),
                 "Side effect must be performed once after LRA is eventually cancelled via timeout");
     }
 
@@ -154,7 +153,7 @@ class CompensateIT extends TestBase {
     @Test
     void testAsyncCompensate_withStatus_happyPath() {
         log.info("CompensateIT: testAsyncCompensate_withStatus_happyPath");
-        URI lra = prepareLraAsync("async-happy");
+        URI lra = prepareCompensateLraAsync("async-happy", LRAParticipant.COMPENSATE_ASYNC, LRAParticipant.STATUS_FOR_ASYNC);
 
         assertDoesNotThrow(() -> lraClient.cancelLRA(lra));
 
@@ -169,7 +168,10 @@ class CompensateIT extends TestBase {
     @Test
     void testAsyncCompensate_withStatus_coordinatorCrashAfterSave() {
         log.info("CompensateIT: testAsyncCompensate_withStatus_coordinatorCrashAfterSave");
-        URI lra = prepareLraAsync("async-after-save");
+        URI lra = prepareCompensateLraAsync(
+                "async-after-save",
+                LRAParticipant.COMPENSATE_ASYNC,
+                LRAParticipant.STATUS_FOR_ASYNC);
 
         injectEnable(nextRoutedCoordinator(), InjectPoint.END_AFTER_SAVE.name());
 
@@ -195,7 +197,10 @@ class CompensateIT extends TestBase {
     @Test
     void testAsyncCompensate_duplicateCallViaProxyFailover() {
         log.info("CompensateIT: testAsyncCompensate_duplicateCallViaProxyFailover");
-        URI lra = prepareLraAsync("async-duplicate");
+        URI lra = prepareCompensateLraAsync(
+                "async-duplicate",
+                LRAParticipant.COMPENSATE_ASYNC,
+                LRAParticipant.STATUS_FOR_ASYNC);
 
         injectEnable(nextRoutedCoordinator(), InjectPoint.END_DURING_CLEANUP.name());
 
@@ -209,6 +214,16 @@ class CompensateIT extends TestBase {
         ensureCoordinatorAvailability(CRASH_RECOVERY_WAIT_S);
         waitForNoActiveLra(lra, LRA_GONE_WAIT_MS);
         assertNoActiveLras();
+
+        int compensateCalls = getAsyncCallCount(lra);
+        int statusCalls = getAsyncStatusCallCount(lra);
+
+        log.info("After async proxy failover: compensateCalls={}, statusCalls={}", compensateCalls, statusCalls);
+
+        assertEquals(1, compensateCalls,
+                "Async @Compensate should be called exactly once in END_DURING_CLEANUP failover");
+        assertTrue(statusCalls >= 1,
+                "Async duplicate path should poll @Status at least once, got " + statusCalls + " polls");
     }
 
     /**
@@ -222,7 +237,10 @@ class CompensateIT extends TestBase {
         log.info("CompensateIT: testAsyncCompensate_withStatus_crashAfterReceivingResponse");
         waitForAllCoordinators(CRASH_RECOVERY_WAIT_S);
         resetProxyRouting();
-        URI lra = prepareLraAsync("async-after-response");
+        URI lra = prepareCompensateLraAsync(
+                "async-after-response",
+                LRAParticipant.COMPENSATE_ASYNC,
+                LRAParticipant.STATUS_FOR_ASYNC);
 
         injectEnable(nextRoutedCoordinator(), InjectPoint.END_AFTER_PARTICIPANT_RESPONSE.name());
 
@@ -237,7 +255,7 @@ class CompensateIT extends TestBase {
         waitForNoActiveLra(lra, LRA_GONE_WAIT_MS);
         assertNoActiveLras();
 
-        int compensateCalls = getAsyncCompensateCallCount(lra);
+        int compensateCalls = getAsyncCallCount(lra);
         int statusCalls = getAsyncStatusCallCount(lra);
 
         log.info("After async crash recovery: compensateCalls={}, statusCalls={}", compensateCalls, statusCalls);
@@ -258,7 +276,7 @@ class CompensateIT extends TestBase {
     @Test
     void testIdempotentCompensate_crashAfterReceivingResponse() {
         log.info("CompensateIT: testIdempotentCompensate_crashAfterReceivingResponse");
-        URI lra = prepareLraIdempotent("crash-after-response");
+        URI lra = prepareCompensateLra("crash-after-response", LRAParticipant.COMPENSATE_IDEMPOTENT);
 
         injectEnable(nextRoutedCoordinator(), InjectPoint.END_AFTER_PARTICIPANT_RESPONSE.name());
 
@@ -273,8 +291,8 @@ class CompensateIT extends TestBase {
         ensureCoordinatorAvailability(CRASH_RECOVERY_WAIT_S);
         waitForNoActiveLra(lra, LRA_GONE_WAIT_MS);
 
-        int callCount = getCompensateCallCount(lra);
-        int workDone = getCompensateWorkDone(lra);
+        int callCount = getIdempotentCallCount(lra);
+        int workDone = getIdempotentWorkDone(lra);
 
         log.info("After crash recovery: callCount={}, workDone={}", callCount, workDone);
 
@@ -292,7 +310,7 @@ class CompensateIT extends TestBase {
     @Test
     void testParticipantTransientFailure_coordinatorRetries() {
         log.info("CompensateIT: testParticipantTransientFailure_coordinatorRetries");
-        URI lra = prepareLraUnreachable("unreachable");
+        URI lra = prepareCompensateLra("unreachable", LRAParticipant.COMPENSATE_UNREACHABLE);
 
         try {
             lraClient.cancelLRA(lra);
@@ -311,7 +329,7 @@ class CompensateIT extends TestBase {
     @Test
     void testFailedToCompensate_lraMovesToFailedToCancel() {
         log.info("CompensateIT: testFailedToCompensate_lraMovesToFailedToCancel");
-        URI lra = prepareLraFail("fail");
+        URI lra = prepareCompensateLra("fail", LRAParticipant.COMPENSATE_FAIL);
 
         try {
             lraClient.cancelLRA(lra);
@@ -332,94 +350,4 @@ class CompensateIT extends TestBase {
                 "LRA should not be in the active list after FailedToCompensate; found in " + activeIds);
     }
 
-    /** Starts a 30-second LRA enrolled with the synchronous compensate endpoint. */
-    private URI prepareLra(String suffix) {
-        injectResetAll();
-        resetParticipantState();
-
-        URI lra = startLra("io.narayana.lra.ha.LRAParticipant#compensate-" + suffix);
-        lrasToAfterFinish.add(lra);
-
-        URI compensate = participantUri(LRAParticipant.COMPENSATE_LRA);
-        URI complete = participantUri(LRAParticipant.COMPLETE_LRA);
-        URI recovery = lraClient.enlistCompensator(lra, 30L, buildCompensatorLink(compensate, complete), new StringBuilder());
-        log.info("Enrolled with compensate={}, recoveryUrl={}", compensate, recovery);
-        return lra;
-    }
-
-    /** Starts a 30-second LRA enrolled with the idempotent compensate endpoint (no @Status needed). */
-    private URI prepareLraIdempotent(String suffix) {
-        injectResetAll();
-        resetParticipantState();
-
-        URI lra = startLra("io.narayana.lra.ha.LRAParticipant#idempotent-" + suffix);
-        lrasToAfterFinish.add(lra);
-
-        URI compensate = participantUri(LRAParticipant.COMPENSATE_IDEMPOTENT);
-        URI complete = participantUri(LRAParticipant.COMPLETE_LRA);
-        URI recovery = lraClient.enlistCompensator(lra, 30L, buildCompensatorLink(compensate, complete), new StringBuilder());
-        log.info("Enrolled idempotent compensate={}, recoveryUrl={}", compensate, recovery);
-        return lra;
-    }
-
-    /** Starts a 30-second LRA enrolled with the async compensate and its status endpoint. */
-    private URI prepareLraAsync(String suffix) {
-        injectResetAll();
-        resetParticipantState();
-
-        URI lra = startLra("io.narayana.lra.ha.LRAParticipant#async-" + suffix);
-        lrasToAfterFinish.add(lra);
-
-        URI compensate = participantUri(LRAParticipant.COMPENSATE_ASYNC);
-        URI complete = participantUri(LRAParticipant.COMPLETE_LRA);
-        URI status = participantUri(LRAParticipant.STATUS_FOR_ASYNC);
-        URI recovery = lraClient.enlistCompensator(lra, 30L, buildCompensatorLinkWithStatus(compensate, complete, status),
-                new StringBuilder());
-        log.info("Enrolled async compensate={}, status={}, recoveryUrl={}", compensate, status, recovery);
-        return lra;
-    }
-
-    /** Starts a 30-second LRA enrolled with the transient-failure compensate endpoint (503 then 200). */
-    private URI prepareLraUnreachable(String suffix) {
-        injectResetAll();
-        resetParticipantState();
-
-        URI lra = startLra("io.narayana.lra.ha.LRAParticipant#unreachable-" + suffix);
-        lrasToAfterFinish.add(lra);
-
-        URI compensate = participantUri(LRAParticipant.COMPENSATE_UNREACHABLE);
-        URI complete = participantUri(LRAParticipant.COMPLETE_LRA);
-        URI recovery = lraClient.enlistCompensator(lra, 30L, buildCompensatorLink(compensate, complete), new StringBuilder());
-        log.info("Enrolled unreachable compensate={}, recoveryUrl={}", compensate, recovery);
-        return lra;
-    }
-
-    /** Starts a 30-second LRA enrolled with the permanently-failing compensate endpoint (always 409). */
-    private URI prepareLraFail(String suffix) {
-        injectResetAll();
-        resetParticipantState();
-
-        URI lra = startLra("io.narayana.lra.ha.LRAParticipant#fail-" + suffix);
-        lrasToAfterFinish.add(lra);
-
-        URI compensate = participantUri(LRAParticipant.COMPENSATE_FAIL);
-        URI complete = participantUri(LRAParticipant.COMPLETE_LRA);
-        URI recovery = lraClient.enlistCompensator(lra, 30L, buildCompensatorLink(compensate, complete), new StringBuilder());
-        log.info("Enrolled fail compensate={}, recoveryUrl={}", compensate, recovery);
-        return lra;
-    }
-
-    /** Starts a 30-second LRA with a unique client ID. */
-    private URI startLra(String clientId) {
-        URI lra = lraClient.startLRA(null, clientId + "-" + System.nanoTime(), 30L, ChronoUnit.SECONDS, true);
-        log.info("Started LRA: {}", lra);
-        return lra;
-    }
-
-    /** Asserts that no active LRAs exist across the entire cluster. */
-    private void assertNoActiveLras() {
-        List<String> activeIds = getActiveIds();
-        long unique = activeIds.stream().distinct().count();
-        assertEquals(0, unique, "Expected no active LRAs but got: " + activeIds);
-    }
 }

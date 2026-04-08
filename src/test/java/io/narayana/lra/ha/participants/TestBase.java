@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.narayana.lra.LRAConstants;
 import io.narayana.lra.client.NarayanaLRAClient;
 import io.narayana.lra.ha.proxy.CoordinatorProxyResource;
+import io.naryana.lra.ha.LRAParticipant;
 import io.quarkus.test.common.QuarkusTestResource;
 import jakarta.enterprise.context.control.ActivateRequestContext;
 import jakarta.inject.Inject;
@@ -15,6 +16,7 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriBuilder;
 import java.net.URI;
 import java.time.Duration;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -62,7 +64,8 @@ public abstract class TestBase {
 
         coordinatorUris = CoordinatorProxyResource.getBackends();
 
-        ensureCoordinatorAvailability(120);
+        waitForAllCoordinators(120);
+        injectResetAll();
         CoordinatorProxyResource.resetProxyRouting();
     }
 
@@ -131,7 +134,10 @@ public abstract class TestBase {
                     .path("inject/reset")
                     .request(MediaType.TEXT_PLAIN)
                     .post(null);
-
+            String body = r.hasEntity() ? r.readEntity(String.class) : "";
+            Assertions.assertTrue(r.getStatus() >= 200 && r.getStatus() < 300,
+                    "Failed to reset inject state on " + coordinatorBase
+                            + " status=" + r.getStatus() + " body=" + body);
         } finally {
             if (r != null)
                 r.close();
@@ -160,11 +166,7 @@ public abstract class TestBase {
 
     protected void injectResetAll() {
         for (URI base : coordinatorUris) {
-            try {
-                injectReset(base);
-            } catch (Exception e) {
-                LoggerFactory.getLogger(getClass()).warn("injectReset failed on {}: {}", base, e.toString());
-            }
+            injectReset(base);
         }
     }
 
@@ -247,6 +249,23 @@ public abstract class TestBase {
         }
     }
 
+    /**
+     * Polls until {@link #getIdempotentCallCount} reaches at least {@code expected} or the timeout expires.
+     * Use this after {@code closeLRA}/{@code cancelLRA} when checking call counts on the idempotent endpoint:
+     * the LRA transitions to Closing/Cancelling (leaving the active list) before participants are notified,
+     * so {@link #waitForNoActiveLra} alone is not a reliable proxy for "callback was delivered".
+     */
+    protected void waitForIdempotentCallCount(URI lraId, int expected, long timeoutMs) {
+        try {
+            Awaitility.await("waiting for idempotent call count >= " + expected)
+                    .atMost(Duration.ofMillis(timeoutMs))
+                    .pollInterval(Duration.ofMillis(200))
+                    .until(() -> getIdempotentCallCount(lraId) >= expected);
+        } catch (ConditionTimeoutException ignored) {
+            // Callers do the follow-up assertions.
+        }
+    }
+
     protected void waitForNoActiveLra(URI lraId, long timeoutMs) {
         String targetLraUid = LRAConstants.getLRAUid(lraId);
 
@@ -258,8 +277,71 @@ public abstract class TestBase {
                             .map(LRAConstants::getLRAUid)
                             .noneMatch(targetLraUid::equals));
         } catch (ConditionTimeoutException ignored) {
-            // Preserve the previous helper semantics: callers do the follow-up assertions.
         }
+    }
+
+    protected URI prepareLra(String clientIdPrefix, String compensatePath, String completePath) {
+        return prepareLra(clientIdPrefix, compensatePath, completePath, null);
+    }
+
+    protected URI prepareLra(String clientIdPrefix, String compensatePath, String completePath, String statusPath) {
+        injectResetAll();
+        resetParticipantState();
+
+        URI lra = startLra(clientIdPrefix);
+        lrasToAfterFinish.add(lra);
+
+        URI compensate = participantUri(compensatePath);
+        URI complete = participantUri(completePath);
+        URI recovery;
+
+        if (statusPath == null) {
+            recovery = lraClient.enlistCompensator(
+                    lra,
+                    30L,
+                    buildCompensatorLink(compensate, complete),
+                    new StringBuilder());
+            LoggerFactory.getLogger(getClass())
+                    .info("Enrolled compensate={}, complete={}, recoveryUrl={}", compensate, complete, recovery);
+        } else {
+            URI status = participantUri(statusPath);
+            recovery = lraClient.enlistCompensator(
+                    lra,
+                    30L,
+                    buildCompensatorLinkWithStatus(compensate, complete, status),
+                    new StringBuilder());
+            LoggerFactory.getLogger(getClass())
+                    .info("Enrolled compensate={}, complete={}, status={}, recoveryUrl={}",
+                            compensate, complete, status, recovery);
+        }
+
+        return lra;
+    }
+
+    protected URI prepareCompensateLra(String scenario, String compensatePath) {
+        return prepareLra(participantClientId(scenario), compensatePath, LRAParticipant.COMPLETE_LRA);
+    }
+
+    protected URI prepareCompensateLraAsync(String scenario, String compensatePath, String statusPath) {
+        return prepareLra(participantClientId(scenario), compensatePath, LRAParticipant.COMPLETE_LRA, statusPath);
+    }
+
+    protected URI prepareCompleteLra(String scenario, String completePath) {
+        return prepareLra(participantClientId(scenario), LRAParticipant.COMPENSATE_LRA, completePath);
+    }
+
+    protected URI prepareCompleteLraAsync(String scenario, String completePath, String statusPath) {
+        return prepareLra(participantClientId(scenario), LRAParticipant.COMPENSATE_LRA, completePath, statusPath);
+    }
+
+    protected URI startLra(String clientIdPrefix) {
+        URI lra = lraClient.startLRA(null, clientIdPrefix + "-" + System.nanoTime(), 30L, ChronoUnit.SECONDS, true);
+        LoggerFactory.getLogger(getClass()).info("Started LRA: {}", lra);
+        return lra;
+    }
+
+    protected String participantClientId(String scenario) {
+        return "io.narayana.lra.ha.LRAParticipant#" + scenario;
     }
 
     protected URI participantUri(String path) {
@@ -283,12 +365,12 @@ public abstract class TestBase {
     /**
      * Resets all in-memory state in the participant bean (idempotency maps,
      * async state, unreachable counters). Call this at the start of each
-     * compensate test for a clean slate.
+     * test for a clean slate.
      */
     protected void resetParticipantState() {
         Response r = null;
         try {
-            r = client.target(participantUri(io.naryana.lra.ha.LRAParticipant.RESET_PARTICIPANT_STATE))
+            r = client.target(participantUri(LRAParticipant.RESET_PARTICIPANT_STATE))
                     .request()
                     .post(null);
         } finally {
@@ -298,40 +380,46 @@ public abstract class TestBase {
     }
 
     /**
-     * Returns the total number of times the idempotent compensate endpoint was
-     * called for the given LRA (including coordinator retries).
+     * Returns the total number of times an idempotent endpoint (compensate or complete)
+     * was called for the given LRA, including coordinator retries.
      */
-    protected int getCompensateCallCount(URI lraId) {
-        return client.target(participantUri(io.naryana.lra.ha.LRAParticipant.COMPENSATE_CALL_COUNT))
+    protected int getIdempotentCallCount(URI lraId) {
+        return client.target(participantUri(LRAParticipant.IDEMPOTENT_CALL_COUNT))
                 .queryParam("lraId", lraId.toASCIIString())
                 .request()
                 .get(Integer.class);
     }
 
     /**
-     * Returns {@code 1} if the idempotent compensate side effect was performed
-     * for the given LRA, {@code 0} otherwise.
+     * Returns {@code 1} if the idempotent side effect was performed for the given LRA,
+     * {@code 0} otherwise.
      */
-    protected int getCompensateWorkDone(URI lraId) {
-        return client.target(participantUri(io.naryana.lra.ha.LRAParticipant.COMPENSATE_WORK_DONE))
+    protected int getIdempotentWorkDone(URI lraId) {
+        return client.target(participantUri(LRAParticipant.IDEMPOTENT_WORK_DONE))
                 .queryParam("lraId", lraId.toASCIIString())
                 .request()
                 .get(Integer.class);
     }
 
-    /** Returns how many times the async compensate endpoint was called for the given LRA. */
-    protected int getAsyncCompensateCallCount(URI lraId) {
-        return client.target(participantUri(io.naryana.lra.ha.LRAParticipant.ASYNC_COMPENSATE_CALL_COUNT))
+    /** Returns how many times the async endpoint (compensate or complete) was called for the given LRA. */
+    protected int getAsyncCallCount(URI lraId) {
+        return client.target(participantUri(LRAParticipant.ASYNC_CALL_COUNT))
                 .queryParam("lraId", lraId.toASCIIString())
                 .request()
                 .get(Integer.class);
     }
 
-    /** Returns how many times the async status endpoint was polled for the given LRA. */
+    /** Returns how many times a status endpoint was polled for the given LRA. */
     protected int getAsyncStatusCallCount(URI lraId) {
-        return client.target(participantUri(io.naryana.lra.ha.LRAParticipant.ASYNC_STATUS_CALL_COUNT))
+        return client.target(participantUri(LRAParticipant.ASYNC_STATUS_CALL_COUNT))
                 .queryParam("lraId", lraId.toASCIIString())
                 .request()
                 .get(Integer.class);
+    }
+
+    protected void assertNoActiveLras() {
+        List<String> activeIds = getActiveIds();
+        long unique = activeIds.stream().distinct().count();
+        Assertions.assertEquals(0, unique, "Expected no active LRAs but got: " + activeIds);
     }
 }
