@@ -5,7 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.narayana.lra.LRAConstants;
-import io.naryana.lra.ha.LRAParticipant;
 import io.quarkus.test.junit.QuarkusTest;
 import java.net.URI;
 import java.util.List;
@@ -24,6 +23,11 @@ import org.slf4j.LoggerFactory;
 @QuarkusTest
 class CompleteIT extends TestBase {
 
+    @Override
+    protected String participantPath() {
+        return "complete-participant";
+    }
+
     private static final Logger log = LoggerFactory.getLogger(CompleteIT.class);
 
     private static final long CRASH_RECOVERY_WAIT_S = 120;
@@ -35,7 +39,7 @@ class CompleteIT extends TestBase {
     @Test
     void testCompleteHappyPath() {
         log.info("CompleteIT: testCompleteHappyPath");
-        URI lra = prepareCompleteLra("complete-happy", LRAParticipant.COMPLETE_LRA);
+        URI lra = prepareCompleteLra("complete-happy", COMPLETE);
 
         assertDoesNotThrow(() -> lraClient.closeLRA(lra));
 
@@ -47,7 +51,7 @@ class CompleteIT extends TestBase {
     @Test
     void testIdempotentComplete_happyPath() {
         log.info("CompleteIT: testIdempotentComplete_happyPath");
-        URI lra = prepareCompleteLra("complete-idempotent-happy", LRAParticipant.COMPLETE_IDEMPOTENT);
+        URI lra = prepareCompleteLra("complete-idempotent-happy", COMPLETE_IDEMPOTENT);
 
         assertDoesNotThrow(() -> lraClient.closeLRA(lra));
 
@@ -68,7 +72,7 @@ class CompleteIT extends TestBase {
     @Test
     void testIdempotentComplete_coordinatorCrashDuringCleanup() {
         log.info("CompleteIT: testIdempotentComplete_coordinatorCrashDuringCleanup");
-        URI lra = prepareCompleteLra("complete-idempotent-during-cleanup", LRAParticipant.COMPLETE_IDEMPOTENT);
+        URI lra = prepareCompleteLra("complete-idempotent-during-cleanup", COMPLETE_IDEMPOTENT);
 
         injectEnable(nextRoutedCoordinator(), InjectPoint.END_DURING_CLEANUP.name());
 
@@ -98,7 +102,7 @@ class CompleteIT extends TestBase {
     @Test
     void testIdempotentComplete_coordinatorCrashAfterSave() {
         log.info("CompleteIT: testIdempotentComplete_coordinatorCrashAfterSave");
-        URI lra = prepareCompleteLra("complete-idempotent-after-save", LRAParticipant.COMPLETE_IDEMPOTENT);
+        URI lra = prepareCompleteLra("complete-idempotent-after-save", COMPLETE_IDEMPOTENT);
 
         injectEnable(nextRoutedCoordinator(), InjectPoint.END_AFTER_SAVE.name());
 
@@ -127,7 +131,7 @@ class CompleteIT extends TestBase {
     @Test
     void testIdempotentComplete_coordinatorCrashBeforeSave() {
         log.info("CompleteIT: testIdempotentComplete_coordinatorCrashBeforeSave");
-        URI lra = prepareCompleteLra("complete-idempotent-before-save", LRAParticipant.COMPLETE_IDEMPOTENT);
+        URI lra = prepareCompleteLra("complete-idempotent-before-save", COMPLETE_IDEMPOTENT);
 
         injectEnable(nextRoutedCoordinator(), InjectPoint.END_BEFORE_SAVE.name());
 
@@ -154,7 +158,7 @@ class CompleteIT extends TestBase {
     @Test
     void testIdempotentComplete_crashAfterReceivingResponse() {
         log.info("CompleteIT: testIdempotentComplete_crashAfterReceivingResponse");
-        URI lra = prepareCompleteLra("complete-crash-after-response", LRAParticipant.COMPLETE_IDEMPOTENT);
+        URI lra = prepareCompleteLra("complete-crash-after-response", COMPLETE_IDEMPOTENT);
 
         injectEnable(nextRoutedCoordinator(), InjectPoint.END_AFTER_PARTICIPANT_RESPONSE.name());
 
@@ -186,8 +190,8 @@ class CompleteIT extends TestBase {
         log.info("CompleteIT: testAsyncComplete_withStatus_happyPath");
         URI lra = prepareCompleteLraAsync(
                 "complete-async-happy",
-                LRAParticipant.COMPLETE_ASYNC,
-                LRAParticipant.STATUS_FOR_ASYNC_COMPLETE);
+                COMPLETE_ASYNC,
+                STATUS_FOR_ASYNC_COMPLETE);
 
         assertDoesNotThrow(() -> lraClient.closeLRA(lra));
 
@@ -204,8 +208,8 @@ class CompleteIT extends TestBase {
         log.info("CompleteIT: testAsyncComplete_withStatus_coordinatorCrashAfterSave");
         URI lra = prepareCompleteLraAsync(
                 "complete-async-after-save",
-                LRAParticipant.COMPLETE_ASYNC,
-                LRAParticipant.STATUS_FOR_ASYNC_COMPLETE);
+                COMPLETE_ASYNC,
+                STATUS_FOR_ASYNC_COMPLETE);
 
         injectEnable(nextRoutedCoordinator(), InjectPoint.END_AFTER_SAVE.name());
 
@@ -233,8 +237,8 @@ class CompleteIT extends TestBase {
         log.info("CompleteIT: testAsyncComplete_duplicateCallViaProxyFailover");
         URI lra = prepareCompleteLraAsync(
                 "complete-async-duplicate",
-                LRAParticipant.COMPLETE_ASYNC,
-                LRAParticipant.STATUS_FOR_ASYNC_COMPLETE);
+                COMPLETE_ASYNC,
+                STATUS_FOR_ASYNC_COMPLETE);
 
         injectEnable(nextRoutedCoordinator(), InjectPoint.END_DURING_CLEANUP.name());
 
@@ -273,8 +277,8 @@ class CompleteIT extends TestBase {
         resetProxyRouting();
         URI lra = prepareCompleteLraAsync(
                 "complete-async-after-response",
-                LRAParticipant.COMPLETE_ASYNC,
-                LRAParticipant.STATUS_FOR_ASYNC_COMPLETE);
+                COMPLETE_ASYNC,
+                STATUS_FOR_ASYNC_COMPLETE);
 
         injectEnable(nextRoutedCoordinator(), InjectPoint.END_AFTER_PARTICIPANT_RESPONSE.name());
 
@@ -310,7 +314,7 @@ class CompleteIT extends TestBase {
     @Test
     void testParticipantTransientFailure_coordinatorRetries() {
         log.info("CompleteIT: testParticipantTransientFailure_coordinatorRetries");
-        URI lra = prepareCompleteLra("complete-unreachable", LRAParticipant.COMPLETE_UNREACHABLE);
+        URI lra = prepareCompleteLra("complete-unreachable", COMPLETE_UNREACHABLE);
 
         try {
             lraClient.closeLRA(lra);
@@ -329,7 +333,7 @@ class CompleteIT extends TestBase {
     @Test
     void testFailedToComplete_lraMovesToFailedToClose() {
         log.info("CompleteIT: testFailedToComplete_lraMovesToFailedToClose");
-        URI lra = prepareCompleteLra("complete-fail", LRAParticipant.COMPLETE_FAIL);
+        URI lra = prepareCompleteLra("complete-fail", COMPLETE_FAIL);
 
         try {
             lraClient.closeLRA(lra);
@@ -359,8 +363,8 @@ class CompleteIT extends TestBase {
         log.info("CompleteIT: testComplete_notCalledOnCancel");
         URI lra = prepareLra(
                 "complete-not-on-cancel",
-                LRAParticipant.COMPENSATE_LRA,
-                LRAParticipant.COMPLETE_IDEMPOTENT);
+                COMPENSATE,
+                COMPLETE_IDEMPOTENT);
 
         assertDoesNotThrow(() -> lraClient.cancelLRA(lra));
         waitForNoActiveLra(lra, LRA_GONE_FAST_MS);
@@ -378,8 +382,8 @@ class CompleteIT extends TestBase {
         log.info("CompleteIT: testCompensate_notCalledOnClose");
         URI lra = prepareLra(
                 "compensate-not-on-close",
-                LRAParticipant.COMPENSATE_IDEMPOTENT,
-                LRAParticipant.COMPLETE_LRA);
+                COMPENSATE_IDEMPOTENT,
+                COMPLETE);
 
         assertDoesNotThrow(() -> lraClient.closeLRA(lra));
         waitForNoActiveLra(lra, LRA_GONE_FAST_MS);

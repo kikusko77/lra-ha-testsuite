@@ -5,7 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.narayana.lra.LRAConstants;
-import io.naryana.lra.ha.LRAParticipant;
 import io.quarkus.test.junit.QuarkusTest;
 import java.net.URI;
 import java.util.List;
@@ -21,6 +20,11 @@ import org.slf4j.LoggerFactory;
  */
 @QuarkusTest
 class CompensateIT extends TestBase {
+
+    @Override
+    protected String participantPath() {
+        return "compensate-participant";
+    }
 
     private static final Logger log = LoggerFactory.getLogger(CompensateIT.class);
 
@@ -40,7 +44,7 @@ class CompensateIT extends TestBase {
     @Test
     void testCompensateHappyPath() {
         log.info("CompensateIT: testCompensateHappyPath");
-        URI lra = prepareCompensateLra("compensate-happy", LRAParticipant.COMPENSATE_LRA);
+        URI lra = prepareCompensateLra("compensate-happy", COMPENSATE);
 
         assertDoesNotThrow(() -> lraClient.cancelLRA(lra));
 
@@ -52,7 +56,7 @@ class CompensateIT extends TestBase {
     @Test
     void testIdempotentCompensate_happyPath() {
         log.info("CompensateIT: testIdempotentCompensate_happyPath");
-        URI lra = prepareCompensateLra("idempotent-happy", LRAParticipant.COMPENSATE_IDEMPOTENT);
+        URI lra = prepareCompensateLra("idempotent-happy", COMPENSATE_IDEMPOTENT);
 
         assertDoesNotThrow(() -> lraClient.cancelLRA(lra));
 
@@ -71,7 +75,7 @@ class CompensateIT extends TestBase {
     @Test
     void testIdempotentCompensate_coordinatorCrashDuringCleanup() {
         log.info("CompensateIT: testIdempotentCompensate_coordinatorCrashDuringCleanup");
-        URI lra = prepareCompensateLra("idempotent-during-cleanup", LRAParticipant.COMPENSATE_IDEMPOTENT);
+        URI lra = prepareCompensateLra("idempotent-during-cleanup", COMPENSATE_IDEMPOTENT);
 
         injectEnable(nextRoutedCoordinator(), InjectPoint.END_DURING_CLEANUP.name());
 
@@ -104,7 +108,7 @@ class CompensateIT extends TestBase {
     @Test
     void testIdempotentCompensate_coordinatorCrashAfterSave() {
         log.info("CompensateIT: testIdempotentCompensate_coordinatorCrashAfterSave");
-        URI lra = prepareCompensateLra("idempotent-after-save", LRAParticipant.COMPENSATE_IDEMPOTENT);
+        URI lra = prepareCompensateLra("idempotent-after-save", COMPENSATE_IDEMPOTENT);
 
         injectEnable(nextRoutedCoordinator(), InjectPoint.END_AFTER_SAVE.name());
 
@@ -131,7 +135,7 @@ class CompensateIT extends TestBase {
     @Test
     void testIdempotentCompensate_coordinatorCrashBeforeSave() {
         log.info("CompensateIT: testIdempotentCompensate_coordinatorCrashBeforeSave");
-        URI lra = prepareCompensateLra("idempotent-before-save", LRAParticipant.COMPENSATE_IDEMPOTENT);
+        URI lra = prepareCompensateLra("idempotent-before-save", COMPENSATE_IDEMPOTENT);
 
         injectEnable(nextRoutedCoordinator(), InjectPoint.END_BEFORE_SAVE.name());
 
@@ -153,7 +157,7 @@ class CompensateIT extends TestBase {
     @Test
     void testAsyncCompensate_withStatus_happyPath() {
         log.info("CompensateIT: testAsyncCompensate_withStatus_happyPath");
-        URI lra = prepareCompensateLraAsync("async-happy", LRAParticipant.COMPENSATE_ASYNC, LRAParticipant.STATUS_FOR_ASYNC);
+        URI lra = prepareCompensateLraAsync("async-happy", COMPENSATE_ASYNC, STATUS_FOR_ASYNC);
 
         assertDoesNotThrow(() -> lraClient.cancelLRA(lra));
 
@@ -170,8 +174,8 @@ class CompensateIT extends TestBase {
         log.info("CompensateIT: testAsyncCompensate_withStatus_coordinatorCrashAfterSave");
         URI lra = prepareCompensateLraAsync(
                 "async-after-save",
-                LRAParticipant.COMPENSATE_ASYNC,
-                LRAParticipant.STATUS_FOR_ASYNC);
+                COMPENSATE_ASYNC,
+                STATUS_FOR_ASYNC);
 
         injectEnable(nextRoutedCoordinator(), InjectPoint.END_AFTER_SAVE.name());
 
@@ -199,8 +203,8 @@ class CompensateIT extends TestBase {
         log.info("CompensateIT: testAsyncCompensate_duplicateCallViaProxyFailover");
         URI lra = prepareCompensateLraAsync(
                 "async-duplicate",
-                LRAParticipant.COMPENSATE_ASYNC,
-                LRAParticipant.STATUS_FOR_ASYNC);
+                COMPENSATE_ASYNC,
+                STATUS_FOR_ASYNC);
 
         injectEnable(nextRoutedCoordinator(), InjectPoint.END_DURING_CLEANUP.name());
 
@@ -239,8 +243,8 @@ class CompensateIT extends TestBase {
         resetProxyRouting();
         URI lra = prepareCompensateLraAsync(
                 "async-after-response",
-                LRAParticipant.COMPENSATE_ASYNC,
-                LRAParticipant.STATUS_FOR_ASYNC);
+                COMPENSATE_ASYNC,
+                STATUS_FOR_ASYNC);
 
         injectEnable(nextRoutedCoordinator(), InjectPoint.END_AFTER_PARTICIPANT_RESPONSE.name());
 
@@ -276,7 +280,7 @@ class CompensateIT extends TestBase {
     @Test
     void testIdempotentCompensate_crashAfterReceivingResponse() {
         log.info("CompensateIT: testIdempotentCompensate_crashAfterReceivingResponse");
-        URI lra = prepareCompensateLra("crash-after-response", LRAParticipant.COMPENSATE_IDEMPOTENT);
+        URI lra = prepareCompensateLra("crash-after-response", COMPENSATE_IDEMPOTENT);
 
         injectEnable(nextRoutedCoordinator(), InjectPoint.END_AFTER_PARTICIPANT_RESPONSE.name());
 
@@ -310,7 +314,7 @@ class CompensateIT extends TestBase {
     @Test
     void testParticipantTransientFailure_coordinatorRetries() {
         log.info("CompensateIT: testParticipantTransientFailure_coordinatorRetries");
-        URI lra = prepareCompensateLra("unreachable", LRAParticipant.COMPENSATE_UNREACHABLE);
+        URI lra = prepareCompensateLra("unreachable", COMPENSATE_UNREACHABLE);
 
         try {
             lraClient.cancelLRA(lra);
@@ -329,7 +333,7 @@ class CompensateIT extends TestBase {
     @Test
     void testFailedToCompensate_lraMovesToFailedToCancel() {
         log.info("CompensateIT: testFailedToCompensate_lraMovesToFailedToCancel");
-        URI lra = prepareCompensateLra("fail", LRAParticipant.COMPENSATE_FAIL);
+        URI lra = prepareCompensateLra("fail", COMPENSATE_FAIL);
 
         try {
             lraClient.cancelLRA(lra);
