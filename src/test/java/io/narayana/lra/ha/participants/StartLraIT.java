@@ -19,7 +19,7 @@ class StartLraIT extends TestBase {
     void testStartLraDuplicates() {
         log.info("StartLraIT: testStartLraDuplicates");
         injectResetAll();
-        injectEnable(nextRoutedCoordinator(), InjectPoint.START.name());
+        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.START.name());
         URI lra = lraClient.startLRA(
                 null,
                 "io.naryana.lra.ha.LRAParticipant#bookGame",
@@ -29,7 +29,7 @@ class StartLraIT extends TestBase {
 
         lrasToAfterFinish.add(lra);
         List<String> activeIds = getActiveIds();
-        long unique = activeIds.stream().distinct().count();
+        long unique = activeIds.size();
 
         assertEquals(
                 1,

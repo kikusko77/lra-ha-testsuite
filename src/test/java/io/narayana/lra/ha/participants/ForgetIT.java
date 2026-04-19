@@ -86,7 +86,7 @@ class ForgetIT extends TestBase {
                 "forget-compensate-after-save",
                 STATUS_FOR_FORGET_COMPENSATE);
 
-        injectEnable(nextRoutedCoordinator(), InjectPoint.END_AFTER_SAVE.name());
+        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_AFTER_SAVE.name());
 
         try {
             lraClient.cancelLRA(lra);
@@ -115,7 +115,7 @@ class ForgetIT extends TestBase {
                 "forget-compensate-duplicate",
                 STATUS_FOR_FORGET_COMPENSATE);
 
-        injectEnable(nextRoutedCoordinator(), InjectPoint.END_DURING_CLEANUP.name());
+        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_DURING_CLEANUP.name());
 
         try {
             lraClient.cancelLRA(lra);
@@ -170,7 +170,7 @@ class ForgetIT extends TestBase {
                 "forget-complete-after-save",
                 STATUS_FOR_FORGET_COMPLETE);
 
-        injectEnable(nextRoutedCoordinator(), InjectPoint.END_AFTER_SAVE.name());
+        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_AFTER_SAVE.name());
 
         try {
             lraClient.closeLRA(lra);
@@ -199,7 +199,7 @@ class ForgetIT extends TestBase {
                 "forget-complete-duplicate",
                 STATUS_FOR_FORGET_COMPLETE);
 
-        injectEnable(nextRoutedCoordinator(), InjectPoint.END_DURING_CLEANUP.name());
+        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_DURING_CLEANUP.name());
 
         try {
             lraClient.closeLRA(lra);
@@ -216,7 +216,6 @@ class ForgetIT extends TestBase {
         assertTrue(getAsyncStatusCallCount(lra) >= 1, "Async duplicate path should poll @Status at least once");
         assertForgetCalledAtLeastOnce(lra);
     }
-
 
     private void waitForFailedAsyncForget(URI lra) {
         waitForNoActiveLra(lra, RECOVERY_SCAN_WAIT_MS);

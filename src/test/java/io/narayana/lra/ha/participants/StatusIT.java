@@ -198,7 +198,7 @@ class StatusIT extends TestBase {
                 COMPLETE,
                 STATUS_GONE);
 
-        injectEnable(nextRoutedCoordinator(), InjectPoint.END_AFTER_PARTICIPANT_RESPONSE.name());
+        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_AFTER_PARTICIPANT_RESPONSE.name());
 
         try {
             lraClient.cancelLRA(lra);
@@ -239,7 +239,7 @@ class StatusIT extends TestBase {
                 COMPLETE_ASYNC_STATUS,
                 STATUS_INTERMEDIATE_COMPLETE);
 
-        injectEnable(nextRoutedCoordinator(), InjectPoint.END_AFTER_PARTICIPANT_RESPONSE.name());
+        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_AFTER_PARTICIPANT_RESPONSE.name());
 
         try {
             lraClient.closeLRA(lra);

@@ -71,7 +71,6 @@ public class StatusParticipant {
     private final ConcurrentHashMap<String, AtomicInteger> postAsyncCompensateStatusCalls = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, AtomicInteger> postAsyncCompleteStatusCalls = new ConcurrentHashMap<>();
 
-
     @Compensate
     @PUT
     @Path("compensate-async")
@@ -108,7 +107,6 @@ public class StatusParticipant {
         }
         return Response.ok(ParticipantStatus.Active.name()).build();
     }
-
 
     @Status
     @GET

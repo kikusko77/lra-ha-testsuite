@@ -74,7 +74,7 @@ class CompleteIT extends TestBase {
         log.info("CompleteIT: testIdempotentComplete_coordinatorCrashDuringCleanup");
         URI lra = prepareCompleteLra("complete-idempotent-during-cleanup", COMPLETE_IDEMPOTENT);
 
-        injectEnable(nextRoutedCoordinator(), InjectPoint.END_DURING_CLEANUP.name());
+        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_DURING_CLEANUP.name());
 
         try {
             lraClient.closeLRA(lra);
@@ -104,7 +104,7 @@ class CompleteIT extends TestBase {
         log.info("CompleteIT: testIdempotentComplete_coordinatorCrashAfterSave");
         URI lra = prepareCompleteLra("complete-idempotent-after-save", COMPLETE_IDEMPOTENT);
 
-        injectEnable(nextRoutedCoordinator(), InjectPoint.END_AFTER_SAVE.name());
+        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_AFTER_SAVE.name());
 
         try {
             lraClient.closeLRA(lra);
@@ -133,7 +133,7 @@ class CompleteIT extends TestBase {
         log.info("CompleteIT: testIdempotentComplete_coordinatorCrashBeforeSave");
         URI lra = prepareCompleteLra("complete-idempotent-before-save", COMPLETE_IDEMPOTENT);
 
-        injectEnable(nextRoutedCoordinator(), InjectPoint.END_BEFORE_SAVE.name());
+        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_BEFORE_SAVE.name());
 
         try {
             lraClient.closeLRA(lra);
@@ -160,7 +160,7 @@ class CompleteIT extends TestBase {
         log.info("CompleteIT: testIdempotentComplete_crashAfterReceivingResponse");
         URI lra = prepareCompleteLra("complete-crash-after-response", COMPLETE_IDEMPOTENT);
 
-        injectEnable(nextRoutedCoordinator(), InjectPoint.END_AFTER_PARTICIPANT_RESPONSE.name());
+        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_AFTER_PARTICIPANT_RESPONSE.name());
 
         try {
             lraClient.closeLRA(lra);
@@ -211,7 +211,7 @@ class CompleteIT extends TestBase {
                 COMPLETE_ASYNC,
                 STATUS_FOR_ASYNC_COMPLETE);
 
-        injectEnable(nextRoutedCoordinator(), InjectPoint.END_AFTER_SAVE.name());
+        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_AFTER_SAVE.name());
 
         try {
             lraClient.closeLRA(lra);
@@ -240,7 +240,7 @@ class CompleteIT extends TestBase {
                 COMPLETE_ASYNC,
                 STATUS_FOR_ASYNC_COMPLETE);
 
-        injectEnable(nextRoutedCoordinator(), InjectPoint.END_DURING_CLEANUP.name());
+        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_DURING_CLEANUP.name());
 
         try {
             lraClient.closeLRA(lra);
@@ -280,7 +280,7 @@ class CompleteIT extends TestBase {
                 COMPLETE_ASYNC,
                 STATUS_FOR_ASYNC_COMPLETE);
 
-        injectEnable(nextRoutedCoordinator(), InjectPoint.END_AFTER_PARTICIPANT_RESPONSE.name());
+        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_AFTER_PARTICIPANT_RESPONSE.name());
 
         try {
             lraClient.closeLRA(lra);

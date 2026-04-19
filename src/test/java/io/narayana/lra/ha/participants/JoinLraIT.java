@@ -37,19 +37,19 @@ class JoinLraIT extends TestBase {
 
         URI compensateUri = participantUri("compensate");
         URI completeUri = participantUri("complete");
-        String compensatorLink = buildCompensatorLink(compensateUri, completeUri);
 
         URI injectedCoordinator = nextRoutedCoordinator();
         log.info("Injecting JOIN_AFTER_SAVE on coordinator {}", injectedCoordinator);
-        injectEnable(injectedCoordinator, InjectPoint.JOIN_AFTER_SAVE.name());
-        log.info("Injected join hold, calling enlistCompensator again (same participant, will timeout+retry)");
+        enableFailurePoint(injectedCoordinator, InjectPoint.JOIN_AFTER_SAVE.name());
+        log.info("Injected join hold, calling joinLRA again (same participant, will timeout+retry)");
 
-        URI recoveryUrl = lraClient.enlistCompensator(lra, 30L, compensatorLink, new StringBuilder());
-        log.info("EnlistCompensator recoveryUrl: {}", recoveryUrl);
+        URI recoveryUrl = lraClient.joinLRA(lra, 30L, compensateUri, completeUri,
+                null, null, null, null, new StringBuilder());
+        log.info("joinLRA recoveryUrl: {}", recoveryUrl);
         assertNotNull(recoveryUrl);
 
         List<String> activeIds = getActiveIds();
-        long unique = activeIds.stream().distinct().count();
+        long unique = activeIds.size();
 
         assertEquals(
                 1,
@@ -74,20 +74,20 @@ class JoinLraIT extends TestBase {
 
         URI compensateUri = participantUri("compensate");
         URI completeUri = participantUri("complete");
-        String compensatorLink = buildCompensatorLink(compensateUri, completeUri);
 
         URI injectedCoordinator = nextRoutedCoordinator();
         log.info("Injecting JOIN_BEFORE_SAVE on coordinator {}", injectedCoordinator);
-        injectEnable(injectedCoordinator, InjectPoint.JOIN_BEFORE_SAVE.name());
+        enableFailurePoint(injectedCoordinator, InjectPoint.JOIN_BEFORE_SAVE.name());
 
-        URI recoveryUrl = lraClient.enlistCompensator(lra, 30L, compensatorLink, new StringBuilder());
+        URI recoveryUrl = lraClient.joinLRA(lra, 30L, compensateUri, completeUri,
+                null, null, null, null, new StringBuilder());
         assertNotNull(recoveryUrl);
         log.info("RecoveryUrl after failover: {}", recoveryUrl);
 
         List<String> all = getActiveIds();
         log.info("Active ids across cluster (raw): {}", all);
 
-        long unique = all.stream().distinct().count();
+        long unique = all.size();
 
         assertEquals(
                 1,

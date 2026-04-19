@@ -196,7 +196,7 @@ class AfterLraIT extends TestBase {
                 participantClientId("after-crash-after-save"),
                 COMPENSATE, COMPLETE, AFTER_LRA);
 
-        injectEnable(nextRoutedCoordinator(), InjectPoint.END_AFTER_SAVE.name());
+        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_AFTER_SAVE.name());
 
         try {
             lraClient.cancelLRA(lra);
@@ -229,7 +229,7 @@ class AfterLraIT extends TestBase {
                 participantClientId("after-crash-during-cleanup"),
                 COMPENSATE, COMPLETE, AFTER_LRA);
 
-        injectEnable(nextRoutedCoordinator(), InjectPoint.END_DURING_CLEANUP.name());
+        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_DURING_CLEANUP.name());
 
         try {
             lraClient.closeLRA(lra);

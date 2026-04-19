@@ -22,14 +22,14 @@ class EndLraIT extends TestBase {
         log.info("Starting testCancelLraBeforeSave");
         URI lra = prepareLraWithParticipant("cancel-before");
 
-        injectEnable(nextRoutedCoordinator(), InjectPoint.END_BEFORE_SAVE.name());
+        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_BEFORE_SAVE.name());
 
         assertDoesNotThrow(() -> lraClient.cancelLRA(lra));
 
         waitForNoActiveLra(lra, 5_000);
 
         List<String> activeIds = getActiveIds();
-        long unique = activeIds.stream().distinct().count();
+        long unique = activeIds.size();
 
         assertEquals(0, unique, "Expected no active LRAs after cancel but got ids=" + activeIds);
     }
@@ -39,7 +39,7 @@ class EndLraIT extends TestBase {
         log.info("Starting testCancelLraAfterSave");
         URI lra = prepareLraWithParticipant("cancel-after");
 
-        injectEnable(nextRoutedCoordinator(), InjectPoint.END_AFTER_SAVE.name());
+        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_AFTER_SAVE.name());
 
         try {
             lraClient.cancelLRA(lra);
@@ -53,7 +53,7 @@ class EndLraIT extends TestBase {
         waitForNoActiveLra(lra, 5_000);
 
         List<String> activeIds = getActiveIds();
-        long unique = activeIds.stream().distinct().count();
+        long unique = activeIds.size();
 
         assertEquals(0, unique, "Expected no active LRAs after cancel but got ids=" + activeIds);
     }
@@ -63,14 +63,14 @@ class EndLraIT extends TestBase {
         log.info("Starting testCloseLraBeforeSave");
         URI lra = prepareLraWithParticipant("close-before");
 
-        injectEnable(nextRoutedCoordinator(), InjectPoint.END_BEFORE_SAVE.name());
+        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_BEFORE_SAVE.name());
 
         assertDoesNotThrow(() -> lraClient.closeLRA(lra));
 
         waitForNoActiveLra(lra, 5_000);
 
         List<String> activeIds = getActiveIds();
-        long unique = activeIds.stream().distinct().count();
+        long unique = activeIds.size();
 
         assertEquals(0, unique, "Expected no active LRAs after close but got ids=" + activeIds);
     }
@@ -80,7 +80,7 @@ class EndLraIT extends TestBase {
         log.info("Starting testCloseLraAfterSave");
         URI lra = prepareLraWithParticipant("close-after");
 
-        injectEnable(nextRoutedCoordinator(), InjectPoint.END_AFTER_SAVE.name());
+        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_AFTER_SAVE.name());
 
         try {
             lraClient.closeLRA(lra);
@@ -94,7 +94,7 @@ class EndLraIT extends TestBase {
         waitForNoActiveLra(lra, 5_000);
 
         List<String> activeIds = getActiveIds();
-        long unique = activeIds.stream().distinct().count();
+        long unique = activeIds.size();
 
         assertEquals(0, unique, "Expected no active LRAs after close but got ids=" + activeIds);
     }
@@ -104,7 +104,7 @@ class EndLraIT extends TestBase {
         log.info("Starting testCancelLraDuringCleanup");
         URI lra = prepareLraWithParticipant("cancel-during-cleanup");
 
-        injectEnable(nextRoutedCoordinator(), InjectPoint.END_DURING_CLEANUP.name());
+        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_DURING_CLEANUP.name());
 
         try {
             lraClient.cancelLRA(lra);
@@ -119,7 +119,7 @@ class EndLraIT extends TestBase {
         waitForNoActiveLra(lra, 5_000);
 
         List<String> activeIds = getActiveIds();
-        long unique = activeIds.stream().distinct().count();
+        long unique = activeIds.size();
 
         assertEquals(0, unique, "Expected no active LRAs after cancel but got ids=" + activeIds);
     }
@@ -129,7 +129,7 @@ class EndLraIT extends TestBase {
         log.info("Starting testCancelLraAfterCleanup");
         URI lra = prepareLraWithParticipant("cancel-after-cleanup");
 
-        injectEnable(nextRoutedCoordinator(), InjectPoint.END_AFTER_CLEANUP.name());
+        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_AFTER_CLEANUP.name());
 
         try {
             lraClient.cancelLRA(lra);
@@ -140,7 +140,7 @@ class EndLraIT extends TestBase {
         waitForNoActiveLra(lra, 5_000);
 
         List<String> activeIds = getActiveIds();
-        long unique = activeIds.stream().distinct().count();
+        long unique = activeIds.size();
 
         assertEquals(0, unique, "Expected no active LRAs after cancel but got ids=" + activeIds);
     }
@@ -150,7 +150,7 @@ class EndLraIT extends TestBase {
         log.info("Starting testCloseLraDuringCleanup");
         URI lra = prepareLraWithParticipant("close-during-cleanup");
 
-        injectEnable(nextRoutedCoordinator(), InjectPoint.END_DURING_CLEANUP.name());
+        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_DURING_CLEANUP.name());
 
         try {
             lraClient.closeLRA(lra);
@@ -165,7 +165,7 @@ class EndLraIT extends TestBase {
         waitForNoActiveLra(lra, 5_000);
 
         List<String> activeIds = getActiveIds();
-        long unique = activeIds.stream().distinct().count();
+        long unique = activeIds.size();
 
         assertEquals(0, unique, "Expected no active LRAs after close but got ids=" + activeIds);
     }
@@ -175,7 +175,7 @@ class EndLraIT extends TestBase {
         log.info("Starting testCloseLraAfterCleanup");
         URI lra = prepareLraWithParticipant("close-after-cleanup");
 
-        injectEnable(nextRoutedCoordinator(), InjectPoint.END_AFTER_CLEANUP.name());
+        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_AFTER_CLEANUP.name());
 
         try {
             lraClient.closeLRA(lra);
@@ -189,7 +189,7 @@ class EndLraIT extends TestBase {
         waitForNoActiveLra(lra, 5_000);
 
         List<String> activeIds = getActiveIds();
-        long unique = activeIds.stream().distinct().count();
+        long unique = activeIds.size();
 
         assertEquals(0, unique, "Expected no active LRAs after close but got ids=" + activeIds);
     }
@@ -211,9 +211,9 @@ class EndLraIT extends TestBase {
 
         URI compensateUri = participantUri("compensate");
         URI completeUri = participantUri("complete");
-        String compensatorLink = buildCompensatorLink(compensateUri, completeUri);
 
-        URI recoveryUrl = lraClient.enlistCompensator(lra, 30L, compensatorLink, new StringBuilder());
+        URI recoveryUrl = lraClient.joinLRA(lra, 30L, compensateUri, completeUri,
+                null, null, null, null, new StringBuilder());
         assertNotNull(recoveryUrl);
         log.info("Participant enlisted, recoveryUrl={}", recoveryUrl);
 

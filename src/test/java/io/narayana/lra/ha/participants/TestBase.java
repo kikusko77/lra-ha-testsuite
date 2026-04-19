@@ -104,7 +104,6 @@ public abstract class TestBase implements ParticipantEndpoints {
     // -------------------------------------------------------------------------
 
     protected List<String> getActiveIds() {
-        List<String> all = new ArrayList<>();
         for (URI base : coordinatorUris) {
             Response r = null;
             try {
@@ -114,9 +113,8 @@ public abstract class TestBase implements ParticipantEndpoints {
                         .get();
                 if (r.getStatus() == 200) {
                     String json = r.readEntity(String.class);
-                    List<String> ids = JSON.readValue(json, new TypeReference<List<String>>() {
+                    return JSON.readValue(json, new TypeReference<List<String>>() {
                     });
-                    all.addAll(ids);
                 }
             } catch (Exception e) {
                 LoggerFactory.getLogger(getClass()).info("Coordinator {} unreachable (possibly crashed)", base);
@@ -125,10 +123,10 @@ public abstract class TestBase implements ParticipantEndpoints {
                     r.close();
             }
         }
-        return all;
+        return new ArrayList<>();
     }
 
-    protected void injectEnable(URI coordinatorBase, String point) {
+    protected void enableFailurePoint(URI coordinatorBase, String point) {
         callInject(coordinatorBase, point, "enable");
     }
 
@@ -298,8 +296,7 @@ public abstract class TestBase implements ParticipantEndpoints {
 
     protected void assertNoActiveLras() {
         List<String> activeIds = getActiveIds();
-        long unique = activeIds.stream().distinct().count();
-        Assertions.assertEquals(0, unique, "Expected no active LRAs but got: " + activeIds);
+        Assertions.assertEquals(0, activeIds.size(), "Expected no active LRAs but got: " + activeIds);
     }
 
     protected URI prepareLra(String clientIdPrefix, String compensatePath, String completePath) {
@@ -395,12 +392,6 @@ public abstract class TestBase implements ParticipantEndpoints {
     protected String buildCompensatorLink(URI compensate, URI complete) {
         return "<" + compensate.toASCIIString() + ">; rel=\"compensate\"; type=\"text/plain\""
                 + ",<" + complete.toASCIIString() + ">; rel=\"complete\"; type=\"text/plain\"";
-    }
-
-    protected String buildCompensatorLinkWithStatus(URI compensate, URI complete, URI status) {
-        return "<" + compensate.toASCIIString() + ">; rel=\"compensate\"; type=\"text/plain\""
-                + ",<" + complete.toASCIIString() + ">; rel=\"complete\"; type=\"text/plain\""
-                + ",<" + status.toASCIIString() + ">; rel=\"status\"; type=\"text/plain\"";
     }
 
     protected int getIdempotentCallCount(URI lraId) {

@@ -129,7 +129,7 @@ class LeaveIT extends TestBase {
 
         callLeave(lra);
 
-        injectEnable(nextRoutedCoordinator(), InjectPoint.END_BEFORE_SAVE.name());
+        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_BEFORE_SAVE.name());
 
         try {
             lraClient.cancelLRA(lra);
@@ -157,7 +157,7 @@ class LeaveIT extends TestBase {
 
         callLeave(lra);
 
-        injectEnable(nextRoutedCoordinator(), InjectPoint.END_AFTER_SAVE.name());
+        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_AFTER_SAVE.name());
 
         try {
             lraClient.cancelLRA(lra);
@@ -187,7 +187,7 @@ class LeaveIT extends TestBase {
 
         callLeave(lra);
 
-        injectEnable(nextRoutedCoordinator(), InjectPoint.END_AFTER_SAVE.name());
+        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_AFTER_SAVE.name());
 
         try {
             lraClient.closeLRA(lra);
