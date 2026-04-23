@@ -49,7 +49,7 @@ class StatusIT extends TestBase {
 
     private static final long LRA_GONE_FAST_MS = 10_000;
     private static final long LRA_GONE_WAIT_MS = 30_000;
-    private static final long CRASH_RECOVERY_WAIT_S = 120;
+    private static final long CRASH_RECOVERY_WAIT_S = 125;
 
     /**
      * Async {@code @Compensate} returns 202, then {@code @Status} returns 410 Gone.

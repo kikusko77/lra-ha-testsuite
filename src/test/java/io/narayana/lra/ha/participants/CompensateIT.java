@@ -29,7 +29,7 @@ class CompensateIT extends TestBase {
     private static final Logger log = LoggerFactory.getLogger(CompensateIT.class);
 
     /** Timeout used after coordinator crash tests — long enough for Docker to restart. */
-    private static final long CRASH_RECOVERY_WAIT_S = 120;
+    private static final long CRASH_RECOVERY_WAIT_S = 15;
 
     /** Timeout for LRA disappearance after coordinator has recovered. */
     private static final long LRA_GONE_WAIT_MS = 30_000;
@@ -38,7 +38,7 @@ class CompensateIT extends TestBase {
     private static final long LRA_GONE_FAST_MS = 10_000;
 
     /** Timeout for tests that wait for Arjuna's periodic recovery scan (default interval ~120 s). */
-    private static final long RECOVERY_SCAN_WAIT_MS = 300_000; // 5 minutes
+    private static final long RECOVERY_SCAN_WAIT_MS = 20_000;
 
     /** Basic cancel: synchronous compensate returns 200 and the LRA disappears from all coordinators. */
     @Test

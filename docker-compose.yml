@@ -1,3 +1,9 @@
+x-coordinator-command: &coordinator-command
+  - "./application"
+  - "-Dquarkus.http.host=0.0.0.0"
+  - "-DRecoveryEnvironmentBean.periodicRecoveryPeriod=20"
+  - "-DRecoveryEnvironmentBean.recoveryBackoffPeriod=10"
+
 services:
   postgres:
     image: postgres:16
@@ -27,6 +33,7 @@ services:
       QUARKUS_DATASOURCE_TX_LOG_USERNAME: lra
       QUARKUS_DATASOURCE_TX_LOG_PASSWORD: lra
       QUARKUS_TRANSACTION_MANAGER_OBJECT_STORE_CREATE_TABLE: "true"
+    command: *coordinator-command
     extra_hosts:
      - "host.docker.internal:192.168.65.254"
 
@@ -44,6 +51,7 @@ services:
       QUARKUS_DATASOURCE_TX_LOG_USERNAME: lra
       QUARKUS_DATASOURCE_TX_LOG_PASSWORD: lra
       QUARKUS_TRANSACTION_MANAGER_OBJECT_STORE_CREATE_TABLE: "false"
+    command: *coordinator-command
     extra_hosts:
      - "host.docker.internal:192.168.65.254"
 
@@ -61,6 +69,7 @@ services:
       QUARKUS_DATASOURCE_TX_LOG_USERNAME: lra
       QUARKUS_DATASOURCE_TX_LOG_PASSWORD: lra
       QUARKUS_TRANSACTION_MANAGER_OBJECT_STORE_CREATE_TABLE: "false"
+    command: *coordinator-command
     extra_hosts:
       - "host.docker.internal:192.168.65.254"
 
@@ -78,5 +87,6 @@ services:
       QUARKUS_DATASOURCE_TX_LOG_USERNAME: lra
       QUARKUS_DATASOURCE_TX_LOG_PASSWORD: lra
       QUARKUS_TRANSACTION_MANAGER_OBJECT_STORE_CREATE_TABLE: "false"
+    command: *coordinator-command
     extra_hosts:
       - "host.docker.internal:192.168.65.254"

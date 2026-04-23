@@ -158,7 +158,7 @@ public class CoordinatorProxyVertx implements Closeable {
         request.body().onSuccess(body -> {
             var req = new PendingRequest(request, body);
             queue.add(req);
-            LOG.info("Queued {} {} (depth {})", request.method(), request.uri(), queue.size());
+            LOG.debug("Queued {} {} (depth {})", request.method(), request.uri(), queue.size());
 
             // Time out the request if it waits too long.
             vertx.setTimer(REQUEST_TIMEOUT_MS, id -> {

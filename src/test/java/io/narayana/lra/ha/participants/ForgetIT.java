@@ -46,8 +46,8 @@ class ForgetIT extends TestBase {
 
     private static final Logger log = LoggerFactory.getLogger(ForgetIT.class);
 
-    private static final long CRASH_RECOVERY_WAIT_S = 120;
-    private static final long RECOVERY_SCAN_WAIT_MS = 300_000;
+    private static final long CRASH_RECOVERY_WAIT_S = 60;
+    private static final long RECOVERY_SCAN_WAIT_MS = 240_000;
 
     /**
      * Async compensate returns 202 and @Status later reports FailedToCompensate.

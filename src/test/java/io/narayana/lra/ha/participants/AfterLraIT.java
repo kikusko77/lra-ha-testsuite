@@ -38,7 +38,7 @@ class AfterLraIT extends TestBase {
 
     private static final long LRA_GONE_FAST_MS = 10_000;
     private static final long LRA_GONE_WAIT_MS = 30_000;
-    private static final long CRASH_RECOVERY_WAIT_S = 120;
+    private static final long CRASH_RECOVERY_WAIT_S = 15;
 
     /**
      * Close the LRA → {@code @AfterLRA} must be called with {@code Closed}.
