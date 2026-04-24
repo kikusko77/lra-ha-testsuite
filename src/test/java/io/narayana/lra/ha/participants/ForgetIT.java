@@ -45,9 +45,9 @@ class ForgetIT extends TestBase {
     }
 
     private static final Logger log = LoggerFactory.getLogger(ForgetIT.class);
-
-    private static final long CRASH_RECOVERY_WAIT_S = 60;
-    private static final long RECOVERY_SCAN_WAIT_MS = 240_000;
+    private static final long CRASH_RECOVERY_WAIT_S = 30;
+    private static final long RECOVERY_SCAN_WAIT_MS = 120_000;
+    private static final long CRASH_SCAN_WAIT_MS = 180_000;
 
     /**
      * Async compensate returns 202 and @Status later reports FailedToCompensate.
@@ -96,7 +96,7 @@ class ForgetIT extends TestBase {
         }
 
         ensureCoordinatorAvailability(CRASH_RECOVERY_WAIT_S);
-        waitForFailedAsyncForget(lra);
+        waitForFailedAsyncForget(lra, CRASH_SCAN_WAIT_MS);
 
         assertEquals(1, getAsyncCallCount(lra), "Recovery should call async @Compensate exactly once");
         assertTrue(getAsyncStatusCallCount(lra) >= 1, "Recovery should poll @Status before @Forget");
@@ -125,7 +125,7 @@ class ForgetIT extends TestBase {
         }
 
         ensureCoordinatorAvailability(CRASH_RECOVERY_WAIT_S);
-        waitForFailedAsyncForget(lra);
+        waitForFailedAsyncForget(lra, CRASH_SCAN_WAIT_MS);
 
         assertEquals(1, getAsyncCallCount(lra),
                 "Async @Compensate should be called exactly once in END_DURING_CLEANUP failover");
@@ -180,7 +180,7 @@ class ForgetIT extends TestBase {
         }
 
         ensureCoordinatorAvailability(CRASH_RECOVERY_WAIT_S);
-        waitForFailedAsyncForget(lra);
+        waitForFailedAsyncForget(lra, CRASH_SCAN_WAIT_MS);
 
         assertEquals(1, getAsyncCallCount(lra), "Recovery should call async @Complete exactly once");
         assertTrue(getAsyncStatusCallCount(lra) >= 1, "Recovery should poll @Status before @Forget");
@@ -209,7 +209,7 @@ class ForgetIT extends TestBase {
         }
 
         ensureCoordinatorAvailability(CRASH_RECOVERY_WAIT_S);
-        waitForFailedAsyncForget(lra);
+        waitForFailedAsyncForget(lra, CRASH_SCAN_WAIT_MS);
 
         assertEquals(1, getAsyncCallCount(lra),
                 "Async @Complete should be called exactly once in END_DURING_CLEANUP failover");
@@ -218,8 +218,12 @@ class ForgetIT extends TestBase {
     }
 
     private void waitForFailedAsyncForget(URI lra) {
-        waitForNoActiveLra(lra, RECOVERY_SCAN_WAIT_MS);
-        waitForForgetCallCount(lra, 1, RECOVERY_SCAN_WAIT_MS);
+        waitForFailedAsyncForget(lra, RECOVERY_SCAN_WAIT_MS);
+    }
+
+    private void waitForFailedAsyncForget(URI lra, long forgetTimeoutMs) {
+        waitForForgetCallCount(lra, 1, forgetTimeoutMs);
+        waitForNoActiveLra(lra, 10_000);
         assertNoActiveLras();
     }
 
