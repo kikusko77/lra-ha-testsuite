@@ -21,7 +21,7 @@ import org.slf4j.LoggerFactory;
 /**
  * Participant dedicated to LeaveIT.
  *
- * The @Leave mechanism: when the test calls the {@code leave} endpoint with an
+ * The @Leave mechanism: when the participant calls the {@code @leave} endpoint with an
  * active LRA context header, the Narayana ServerLRAFilter intercepts the request,
  * builds the compensator Link from the {@code @Compensate} and {@code @Complete}
  * annotations on this class, and calls {@code PUT /{lraId}/remove} on the

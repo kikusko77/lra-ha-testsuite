@@ -67,7 +67,7 @@ public class AfterLraParticipant {
 
     /**
      * Standard @AfterLRA endpoint. Records the status for every call; performs
-     * the idempotent side-effect only on the first call. Always returns 200.
+     * the side-effect only on the first call. Always returns 200.
      */
     @AfterLRA
     @PUT

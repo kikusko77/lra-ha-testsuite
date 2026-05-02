@@ -9,33 +9,6 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * Tests for the @Forget lifecycle in the HA setup.
- *
- * Per the MicroProfile LRA spec, @Forget is used when a participant accepted
- * completion/compensation asynchronously or knows it failed permanently and
- * must retain cleanup state until the coordinator explicitly tells it it can
- * release those resources. In this HA suite, the meaningful coverage is the
- * top-level async-failure path for close/cancel plus crash/failover variants.
- *
- * <p>
- * <b>HA note on @Forget call counts:</b> In a multi-coordinator setup with
- * a shared object store, all running coordinators' recovery scanners
- * independently load the same LRA record (which has {@code accepted=true}
- * persisted after the initial 202 response). Each coordinator calls
- * {@code retryGetEndStatus}, receives the failed terminal status, and issues
- * a separate {@code @Forget} DELETE before any of them flushes the updated
- * state (forgetURI=null) back to the object store. The MicroProfile LRA spec
- * mandates only that the coordinator calls {@code @Forget} <em>at least
- * once</em> and that participants handle duplicate calls idempotently.
- * Asserting exactly-once is too strict in a shared-store HA environment.
- *
- * <p>
- * // TODO: fix in coordinator — implement atomic claim on LRA records before
- * // recovery processing (e.g. exclusive FileLock / SELECT FOR UPDATE) so that
- * // only one coordinator calls @Forget per failed participant per LRA.
- * // See LRAParticipantRecord.forget() and LRARecoveryModule.
- */
 @QuarkusTest
 class ForgetIT extends TestBase {
 
@@ -228,14 +201,7 @@ class ForgetIT extends TestBase {
     }
 
     /**
-     * Asserts that {@code @Forget} was called at least once and logs a warning
-     * if it was called more than once, surfacing the HA duplicate-call finding.
-     *
-     * <p>
-     * // TODO (coordinator): prevent duplicate @Forget calls in HA by acquiring
-     * // an exclusive claim on the LRA record before recovery processing —
-     * // e.g. FileLock on the object-store file or SELECT FOR UPDATE on JDBC.
-     * // See LRAParticipantRecord.forget() and LRARecoveryModule.
+     * it should call it more times
      */
     private void assertForgetCalledAtLeastOnce(URI lra) {
         int forgetCount = getForgetCallCount(lra);

@@ -205,6 +205,126 @@ class LeaveIT extends TestBase {
                 "Left participant must not receive @Complete after crash-and-recovery");
     }
 
+    @Test
+    void testLeave_coordinatorCrashBeforeSave_cancelDoesNotCallCompensate() {
+        log.info("LeaveIT: testLeave_coordinatorCrashBeforeSave_cancelDoesNotCallCompensate");
+        URI lra = prepareLeaveLra("leave-itself-crash-before-save-cancel");
+        String compensatorLink = buildCompensatorLink(
+                participantUri(COMPENSATE), participantUri(COMPLETE));
+
+        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.LEAVE_BEFORE_SAVE.name());
+
+        try {
+            lraClient.leaveLRA(lra, compensatorLink);
+        } catch (jakarta.ws.rs.WebApplicationException e) {
+            log.info("leaveLRA returned {} after retry exhaustion",
+                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
+        }
+
+        ensureCoordinatorAvailability(CRASH_RECOVERY_WAIT_S);
+
+        try {
+            lraClient.cancelLRA(lra);
+        } catch (jakarta.ws.rs.NotFoundException ignored) {
+        } catch (jakarta.ws.rs.WebApplicationException ignored) {
+        }
+
+        waitForNoActiveLra(lra, LRA_GONE_WAIT_MS);
+
+        assertEquals(0, getIdempotentCallCount(lra),
+                "@Compensate must not fire — leave should have persisted via @Retry failover");
+    }
+
+    @Test
+    void testLeave_coordinatorCrashAfterSave_cancelDoesNotCallCompensate() {
+        log.info("LeaveIT: testLeave_coordinatorCrashAfterSave_cancelDoesNotCallCompensate");
+        URI lra = prepareLeaveLra("leave-itself-crash-after-save-cancel");
+        String compensatorLink = buildCompensatorLink(
+                participantUri(COMPENSATE), participantUri(COMPLETE));
+
+        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.LEAVE_AFTER_SAVE.name());
+
+        try {
+            lraClient.leaveLRA(lra, compensatorLink);
+        } catch (jakarta.ws.rs.WebApplicationException e) {
+            log.info("leaveLRA returned {} after retry exhaustion",
+                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
+        }
+
+        ensureCoordinatorAvailability(CRASH_RECOVERY_WAIT_S);
+
+        try {
+            lraClient.cancelLRA(lra);
+        } catch (jakarta.ws.rs.NotFoundException ignored) {
+        } catch (jakarta.ws.rs.WebApplicationException ignored) {
+        }
+
+        waitForNoActiveLra(lra, LRA_GONE_WAIT_MS);
+
+        assertEquals(0, getIdempotentCallCount(lra),
+                "@Compensate must not fire after leave persisted (LEAVE_AFTER_SAVE)");
+    }
+
+    @Test
+    void testLeave_coordinatorCrashBeforeSave_closeDoesNotCallComplete() {
+        log.info("LeaveIT: testLeave_coordinatorCrashBeforeSave_closeDoesNotCallComplete");
+        URI lra = prepareLeaveLra("leave-itself-crash-before-save-close");
+        String compensatorLink = buildCompensatorLink(
+                participantUri(COMPENSATE), participantUri(COMPLETE));
+
+        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.LEAVE_BEFORE_SAVE.name());
+
+        try {
+            lraClient.leaveLRA(lra, compensatorLink);
+        } catch (jakarta.ws.rs.WebApplicationException e) {
+            log.info("leaveLRA returned {} after retry exhaustion",
+                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
+        }
+
+        ensureCoordinatorAvailability(CRASH_RECOVERY_WAIT_S);
+
+        try {
+            lraClient.closeLRA(lra);
+        } catch (jakarta.ws.rs.NotFoundException ignored) {
+        } catch (jakarta.ws.rs.WebApplicationException ignored) {
+        }
+
+        waitForNoActiveLra(lra, LRA_GONE_WAIT_MS);
+
+        assertEquals(0, getIdempotentCallCount(lra),
+                "@Complete must not fire — leave should have persisted via @Retry failover");
+    }
+
+    @Test
+    void testLeave_coordinatorCrashAfterSave_closeDoesNotCallComplete() {
+        log.info("LeaveIT: testLeave_coordinatorCrashAfterSave_closeDoesNotCallComplete");
+        URI lra = prepareLeaveLra("leave-itself-crash-after-save-close");
+        String compensatorLink = buildCompensatorLink(
+                participantUri(COMPENSATE), participantUri(COMPLETE));
+
+        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.LEAVE_AFTER_SAVE.name());
+
+        try {
+            lraClient.leaveLRA(lra, compensatorLink);
+        } catch (jakarta.ws.rs.WebApplicationException e) {
+            log.info("leaveLRA returned {} after retry exhaustion",
+                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
+        }
+
+        ensureCoordinatorAvailability(CRASH_RECOVERY_WAIT_S);
+
+        try {
+            lraClient.closeLRA(lra);
+        } catch (jakarta.ws.rs.NotFoundException ignored) {
+        } catch (jakarta.ws.rs.WebApplicationException ignored) {
+        }
+
+        waitForNoActiveLra(lra, LRA_GONE_WAIT_MS);
+
+        assertEquals(0, getIdempotentCallCount(lra),
+                "@Complete must not fire after leave persisted (LEAVE_AFTER_SAVE)");
+    }
+
     /**
      * Starts an LRA and enrolls the leave-participant as a compensator.
      * Uses the shared {@code callCounts} map tracked by {@link io.naryana.lra.ha.LeaveParticipant}
