@@ -1,0 +1,304 @@
+package io.narayana.lra.ha.participants;
+
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import io.quarkus.test.junit.QuarkusTest;
+import jakarta.ws.rs.client.Entity;
+import jakarta.ws.rs.core.Response;
+import java.net.URI;
+import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+@QuarkusTest
+class NestedLeaveIT extends TestBase {
+
+    @Override
+    protected String participantPath() {
+        return "nested-participant";
+    }
+
+    private static final Logger log = LoggerFactory.getLogger(NestedLeaveIT.class);
+
+    private static final long LRA_GONE_FAST_MS = 10_000;
+    private static final long LRA_GONE_WAIT_MS = 30_000;
+    private static final long CRASH_RECOVERY_WAIT_S = 15;
+
+    @Test
+    void testLeaveNested_beforeCancel() {
+        log.info("NestedLeaveIT: testLeaveNested_beforeCancel");
+        URI parent = startTopLra("nested-leave-cancel");
+        URI nested = prepareNestedLra(parent, "nested-leave-cancel", COMPENSATE, COMPLETE);
+
+        callLeave(nested);
+
+        assertDoesNotThrow(() -> lraClient.cancelLRA(nested));
+
+        waitForNoActiveLra(nested, LRA_GONE_FAST_MS);
+
+        assertEquals(0, getIdempotentCallCount(nested),
+                "@Compensate must not be called after the participant left the nested LRA");
+    }
+
+    @Test
+    void testLeaveNested_beforeClose() {
+        log.info("NestedLeaveIT: testLeaveNested_beforeClose");
+        URI parent = startTopLra("nested-leave-close");
+        URI nested = prepareNestedLra(parent, "nested-leave-close", COMPENSATE, COMPLETE);
+
+        callLeave(nested);
+
+        assertDoesNotThrow(() -> lraClient.closeLRA(nested));
+
+        waitForNoActiveLra(nested, LRA_GONE_FAST_MS);
+
+        assertEquals(0, getIdempotentCallCount(nested),
+                "@Complete must not be called after the participant left the nested LRA");
+    }
+
+    @Test
+    void testNoLeaveNested_cancelCallsCompensate() {
+        log.info("NestedLeaveIT: testNoLeaveNested_cancelCallsCompensate");
+        URI parent = startTopLra("nested-no-leave-cancel");
+        URI nested = prepareNestedLra(parent, "nested-no-leave-cancel", COMPENSATE, COMPLETE);
+
+        assertDoesNotThrow(() -> lraClient.cancelLRA(nested));
+
+        waitForIdempotentCallCount(nested, 1, LRA_GONE_FAST_MS);
+
+        assertEquals(1, getIdempotentCallCount(nested),
+                "@Compensate must be called exactly once when the participant has not left");
+    }
+
+    @Test
+    void testNoLeaveNested_closeCallsComplete() {
+        log.info("NestedLeaveIT: testNoLeaveNested_closeCallsComplete");
+        URI parent = startTopLra("nested-no-leave-close");
+        URI nested = prepareNestedLra(parent, "nested-no-leave-close", COMPENSATE, COMPLETE);
+
+        assertDoesNotThrow(() -> lraClient.closeLRA(nested));
+
+        waitForIdempotentCallCount(nested, 1, LRA_GONE_FAST_MS);
+
+        assertEquals(1, getIdempotentCallCount(nested),
+                "@Complete must be called exactly once when the participant has not left");
+    }
+
+    @Test
+    void testLeaveNested_beforeCancel_coordinatorCrashBeforeSave() {
+        log.info("NestedLeaveIT: testLeaveNested_beforeCancel_coordinatorCrashBeforeSave");
+        URI parent = startTopLra("nested-leave-cancel-crash-before");
+        URI nested = prepareNestedLra(parent, "nested-leave-cancel-crash-before", COMPENSATE, COMPLETE);
+
+        callLeave(nested);
+
+        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_BEFORE_SAVE.name());
+
+        try {
+            lraClient.cancelLRA(nested);
+        } catch (jakarta.ws.rs.WebApplicationException e) {
+            log.info("cancelLRA returned {} — coordinator crashed",
+                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
+        }
+
+        ensureCoordinatorAvailability(CRASH_RECOVERY_WAIT_S);
+        waitForNoActiveLra(nested, LRA_GONE_WAIT_MS);
+
+        assertEquals(0, getIdempotentCallCount(nested),
+                "Left participant must not receive @Compensate even after coordinator failover");
+    }
+
+    @Test
+    void testLeaveNested_beforeCancel_coordinatorCrashAfterSave() {
+        log.info("NestedLeaveIT: testLeaveNested_beforeCancel_coordinatorCrashAfterSave");
+        URI parent = startTopLra("nested-leave-cancel-crash-after");
+        URI nested = prepareNestedLra(parent, "nested-leave-cancel-crash-after", COMPENSATE, COMPLETE);
+
+        callLeave(nested);
+
+        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_AFTER_SAVE.name());
+
+        try {
+            lraClient.cancelLRA(nested);
+        } catch (jakarta.ws.rs.NotFoundException ignored) {
+        } catch (jakarta.ws.rs.WebApplicationException e) {
+            log.info("cancelLRA returned {} — coordinator crashed",
+                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
+        }
+
+        ensureCoordinatorAvailability(CRASH_RECOVERY_WAIT_S);
+        waitForNoActiveLra(nested, LRA_GONE_WAIT_MS);
+
+        assertEquals(0, getIdempotentCallCount(nested),
+                "Left participant must not receive @Compensate after crash-and-recovery");
+    }
+
+    @Test
+    void testLeaveNested_beforeClose_coordinatorCrashAfterSave() {
+        log.info("NestedLeaveIT: testLeaveNested_beforeClose_coordinatorCrashAfterSave");
+        URI parent = startTopLra("nested-leave-close-crash-after");
+        URI nested = prepareNestedLra(parent, "nested-leave-close-crash-after", COMPENSATE, COMPLETE);
+
+        callLeave(nested);
+
+        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_AFTER_SAVE.name());
+
+        try {
+            lraClient.closeLRA(nested);
+        } catch (jakarta.ws.rs.NotFoundException ignored) {
+        } catch (jakarta.ws.rs.WebApplicationException e) {
+            log.info("closeLRA returned {} — coordinator crashed",
+                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
+        }
+
+        ensureCoordinatorAvailability(CRASH_RECOVERY_WAIT_S);
+        waitForNoActiveLra(nested, LRA_GONE_WAIT_MS);
+
+        assertEquals(0, getIdempotentCallCount(nested),
+                "Left participant must not receive @Complete after crash-and-recovery");
+    }
+
+    @Test
+    void testLeaveNested_coordinatorCrashBeforeSave_cancelDoesNotCompensate() {
+        log.info("NestedLeaveIT: testLeaveNested_coordinatorCrashBeforeSave_cancelDoesNotCompensate");
+        URI parent = startTopLra("nested-leave-itself-crash-before-cancel");
+        URI nested = prepareNestedLra(parent, "nested-leave-itself-crash-before-cancel",
+                COMPENSATE, COMPLETE);
+        String compensatorLink = buildCompensatorLink(
+                participantUri(COMPENSATE), participantUri(COMPLETE));
+
+        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.LEAVE_BEFORE_SAVE.name());
+
+        try {
+            lraClient.leaveLRA(nested, compensatorLink);
+        } catch (jakarta.ws.rs.WebApplicationException e) {
+            log.info("leaveLRA returned {} after retry exhaustion",
+                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
+        }
+
+        ensureCoordinatorAvailability(CRASH_RECOVERY_WAIT_S);
+
+        try {
+            lraClient.cancelLRA(nested);
+        } catch (jakarta.ws.rs.NotFoundException ignored) {
+        } catch (jakarta.ws.rs.WebApplicationException ignored) {
+        }
+
+        waitForNoActiveLra(nested, LRA_GONE_WAIT_MS);
+
+        assertEquals(0, getIdempotentCallCount(nested),
+                "@Compensate must not fire — leave should have persisted via @Retry failover");
+    }
+
+    @Test
+    void testLeaveNested_coordinatorCrashAfterSave_cancelDoesNotCompensate() {
+        log.info("NestedLeaveIT: testLeaveNested_coordinatorCrashAfterSave_cancelDoesNotCompensate");
+        URI parent = startTopLra("nested-leave-itself-crash-after-cancel");
+        URI nested = prepareNestedLra(parent, "nested-leave-itself-crash-after-cancel",
+                COMPENSATE, COMPLETE);
+        String compensatorLink = buildCompensatorLink(
+                participantUri(COMPENSATE), participantUri(COMPLETE));
+
+        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.LEAVE_AFTER_SAVE.name());
+
+        try {
+            lraClient.leaveLRA(nested, compensatorLink);
+        } catch (jakarta.ws.rs.WebApplicationException e) {
+            log.info("leaveLRA returned {} after retry exhaustion",
+                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
+        }
+
+        ensureCoordinatorAvailability(CRASH_RECOVERY_WAIT_S);
+
+        try {
+            lraClient.cancelLRA(nested);
+        } catch (jakarta.ws.rs.NotFoundException ignored) {
+        } catch (jakarta.ws.rs.WebApplicationException ignored) {
+        }
+
+        waitForNoActiveLra(nested, LRA_GONE_WAIT_MS);
+
+        assertEquals(0, getIdempotentCallCount(nested),
+                "@Compensate must not fire after leave persisted (LEAVE_AFTER_SAVE)");
+    }
+
+    @Test
+    void testLeaveNested_coordinatorCrashBeforeSave_closeDoesNotComplete() {
+        log.info("NestedLeaveIT: testLeaveNested_coordinatorCrashBeforeSave_closeDoesNotComplete");
+        URI parent = startTopLra("nested-leave-itself-crash-before-close");
+        URI nested = prepareNestedLra(parent, "nested-leave-itself-crash-before-close",
+                COMPENSATE, COMPLETE);
+        String compensatorLink = buildCompensatorLink(
+                participantUri(COMPENSATE), participantUri(COMPLETE));
+
+        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.LEAVE_BEFORE_SAVE.name());
+
+        try {
+            lraClient.leaveLRA(nested, compensatorLink);
+        } catch (jakarta.ws.rs.WebApplicationException e) {
+            log.info("leaveLRA returned {} after retry exhaustion",
+                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
+        }
+
+        ensureCoordinatorAvailability(CRASH_RECOVERY_WAIT_S);
+
+        try {
+            lraClient.closeLRA(nested);
+        } catch (jakarta.ws.rs.NotFoundException ignored) {
+        } catch (jakarta.ws.rs.WebApplicationException ignored) {
+        }
+
+        waitForNoActiveLra(nested, LRA_GONE_WAIT_MS);
+
+        assertEquals(0, getIdempotentCallCount(nested),
+                "@Complete must not fire — leave should have persisted via @Retry failover");
+    }
+
+    @Test
+    void testLeaveNested_coordinatorCrashAfterSave_closeDoesNotComplete() {
+        log.info("NestedLeaveIT: testLeaveNested_coordinatorCrashAfterSave_closeDoesNotComplete");
+        URI parent = startTopLra("nested-leave-itself-crash-after-close");
+        URI nested = prepareNestedLra(parent, "nested-leave-itself-crash-after-close",
+                COMPENSATE, COMPLETE);
+        String compensatorLink = buildCompensatorLink(
+                participantUri(COMPENSATE), participantUri(COMPLETE));
+
+        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.LEAVE_AFTER_SAVE.name());
+
+        try {
+            lraClient.leaveLRA(nested, compensatorLink);
+        } catch (jakarta.ws.rs.WebApplicationException e) {
+            log.info("leaveLRA returned {} after retry exhaustion",
+                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
+        }
+
+        ensureCoordinatorAvailability(CRASH_RECOVERY_WAIT_S);
+
+        try {
+            lraClient.closeLRA(nested);
+        } catch (jakarta.ws.rs.NotFoundException ignored) {
+        } catch (jakarta.ws.rs.WebApplicationException ignored) {
+        }
+
+        waitForNoActiveLra(nested, LRA_GONE_WAIT_MS);
+
+        assertEquals(0, getIdempotentCallCount(nested),
+                "@Complete must not fire after leave persisted (LEAVE_AFTER_SAVE)");
+    }
+
+    private void callLeave(URI lraId) {
+        String compensatorLink = buildCompensatorLink(
+                participantUri(COMPENSATE), participantUri(COMPLETE));
+
+        URI removeUri = jakarta.ws.rs.core.UriBuilder.fromUri(lraId).path("remove").build();
+
+        Response r = client.target(removeUri)
+                .request()
+                .put(Entity.text(compensatorLink));
+        int status = r.getStatus();
+        r.close();
+        log.info("LEAVE call for nested lraId={} → {} returned HTTP {}", lraId, removeUri, status);
+        assertEquals(200, status, "Leave endpoint must return 200; got " + status);
+    }
+}

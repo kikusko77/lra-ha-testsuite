@@ -1,0 +1,294 @@
+package io.narayana.lra.ha.participants;
+
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import io.narayana.lra.LRAConstants;
+import io.quarkus.test.junit.QuarkusTest;
+import java.net.URI;
+import java.util.List;
+import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+@QuarkusTest
+class NestedCompleteIT extends TestBase {
+
+    @Override
+    protected String participantPath() {
+        return "nested-participant";
+    }
+
+    private static final Logger log = LoggerFactory.getLogger(NestedCompleteIT.class);
+
+    private static final long CRASH_RECOVERY_WAIT_S = 15;
+    private static final long LRA_GONE_WAIT_MS = 30_000;
+    private static final long LRA_GONE_FAST_MS = 10_000;
+    private static final long RECOVERY_SCAN_WAIT_MS = 20_000;
+
+    @Test
+    void testCompleteHappyPath() {
+        log.info("NestedCompleteIT: testCompleteHappyPath");
+        URI parent = startTopLra("nested-complete-happy");
+        URI nested = prepareNestedLra(parent, "nested-complete-happy", COMPENSATE, COMPLETE);
+
+        assertDoesNotThrow(() -> lraClient.closeLRA(nested));
+        waitForNoActiveLra(nested, LRA_GONE_FAST_MS);
+    }
+
+    @Test
+    void testIdempotentComplete_happyPath() {
+        log.info("NestedCompleteIT: testIdempotentComplete_happyPath");
+        URI parent = startTopLra("nested-complete-idempotent-happy");
+        URI nested = prepareNestedLra(parent, "nested-complete-idempotent-happy",
+                COMPENSATE, COMPLETE_IDEMPOTENT);
+
+        assertDoesNotThrow(() -> lraClient.closeLRA(nested));
+
+        waitForIdempotentCallCount(nested, 1, LRA_GONE_FAST_MS);
+
+        assertEquals(1, getIdempotentCallCount(nested),
+                "Idempotent complete should be called exactly once in the happy path");
+        assertEquals(1, getIdempotentWorkDone(nested),
+                "Side effect must be performed exactly once");
+    }
+
+    @Test
+    void testIdempotentComplete_coordinatorCrashDuringCleanup() {
+        log.info("NestedCompleteIT: testIdempotentComplete_coordinatorCrashDuringCleanup");
+        URI parent = startTopLra("nested-complete-during-cleanup");
+        URI nested = prepareNestedLra(parent, "nested-complete-during-cleanup",
+                COMPENSATE, COMPLETE_IDEMPOTENT);
+
+        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_DURING_CLEANUP.name());
+
+        try {
+            lraClient.closeLRA(nested);
+        } catch (jakarta.ws.rs.WebApplicationException e) {
+            log.info("closeLRA returned {} (coordinator crashed)",
+                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
+        }
+
+        ensureCoordinatorAvailability(CRASH_RECOVERY_WAIT_S);
+        waitForNoActiveLra(nested, LRA_GONE_WAIT_MS);
+
+        int callCount = getIdempotentCallCount(nested);
+        int workDone = getIdempotentWorkDone(nested);
+        log.info("After crash recovery: callCount={}, workDone={}", callCount, workDone);
+
+        assertTrue(callCount >= 1, "Complete must have been called at least once, got " + callCount);
+        assertEquals(1, workDone, "Side effect must be performed exactly once regardless of retry count");
+    }
+
+    @Test
+    void testIdempotentComplete_coordinatorCrashAfterSave() {
+        log.info("NestedCompleteIT: testIdempotentComplete_coordinatorCrashAfterSave");
+        URI parent = startTopLra("nested-complete-after-save");
+        URI nested = prepareNestedLra(parent, "nested-complete-after-save",
+                COMPENSATE, COMPLETE_IDEMPOTENT);
+
+        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_AFTER_SAVE.name());
+
+        try {
+            lraClient.closeLRA(nested);
+        } catch (jakarta.ws.rs.NotFoundException e) {
+            log.info("closeLRA returned 404, treating as already processed");
+        } catch (jakarta.ws.rs.WebApplicationException e) {
+            log.info("closeLRA returned {} (coordinator crashed)",
+                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
+        }
+
+        ensureCoordinatorAvailability(CRASH_RECOVERY_WAIT_S);
+        waitForNoActiveLra(nested, LRA_GONE_WAIT_MS);
+
+        assertEquals(1, getIdempotentWorkDone(nested),
+                "Side effect must be performed exactly once after crash-and-recovery");
+    }
+
+    @Test
+    void testIdempotentComplete_coordinatorCrashBeforeSave() {
+        log.info("NestedCompleteIT: testIdempotentComplete_coordinatorCrashBeforeSave");
+        URI parent = startTopLra("nested-complete-before-save");
+        URI nested = prepareNestedLra(parent, "nested-complete-before-save",
+                COMPENSATE, COMPLETE_IDEMPOTENT);
+
+        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_BEFORE_SAVE.name());
+
+        try {
+            lraClient.closeLRA(nested);
+        } catch (jakarta.ws.rs.WebApplicationException e) {
+            log.info("closeLRA returned {} — coordinator crashed",
+                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
+        }
+
+        ensureCoordinatorAvailability(CRASH_RECOVERY_WAIT_S);
+        waitForNoActiveLra(nested, LRA_GONE_WAIT_MS);
+        waitForIdempotentCallCount(nested, 1, LRA_GONE_WAIT_MS);
+
+        assertEquals(1, getIdempotentWorkDone(nested),
+                "Side effect must be performed exactly once after proxy failover");
+    }
+
+    @Test
+    void testIdempotentComplete_crashAfterReceivingResponse() {
+        log.info("NestedCompleteIT: testIdempotentComplete_crashAfterReceivingResponse");
+        URI parent = startTopLra("nested-complete-crash-after-response");
+        URI nested = prepareNestedLra(parent, "nested-complete-crash-after-response",
+                COMPENSATE, COMPLETE_IDEMPOTENT);
+
+        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_AFTER_PARTICIPANT_RESPONSE.name());
+
+        try {
+            lraClient.closeLRA(nested);
+        } catch (jakarta.ws.rs.WebApplicationException e) {
+            log.info("closeLRA returned {} — coordinator crashed after 200",
+                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
+        }
+
+        ensureCoordinatorAvailability(CRASH_RECOVERY_WAIT_S);
+        waitForNoActiveLra(nested, LRA_GONE_WAIT_MS);
+
+        int callCount = getIdempotentCallCount(nested);
+        int workDone = getIdempotentWorkDone(nested);
+        log.info("After crash recovery: callCount={}, workDone={}", callCount, workDone);
+
+        assertTrue(callCount >= 1, "Complete must be called at least once, got " + callCount);
+        assertEquals(1, workDone, "Side effect must be performed exactly once regardless of any recovery replay");
+    }
+
+    @Test
+    void testAsyncComplete_withStatus_happyPath() {
+        log.info("NestedCompleteIT: testAsyncComplete_withStatus_happyPath");
+        URI parent = startTopLra("nested-complete-async-happy");
+        URI nested = prepareNestedLra(parent, "nested-complete-async-happy",
+                COMPENSATE, COMPLETE_ASYNC, STATUS_FOR_ASYNC_COMPLETE);
+
+        assertDoesNotThrow(() -> lraClient.closeLRA(nested));
+        waitForNoActiveLra(nested, LRA_GONE_FAST_MS);
+    }
+
+    @Test
+    void testAsyncComplete_withStatus_coordinatorCrashAfterSave() {
+        log.info("NestedCompleteIT: testAsyncComplete_withStatus_coordinatorCrashAfterSave");
+        URI parent = startTopLra("nested-complete-async-after-save");
+        URI nested = prepareNestedLra(parent, "nested-complete-async-after-save",
+                COMPENSATE, COMPLETE_ASYNC, STATUS_FOR_ASYNC_COMPLETE);
+
+        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_AFTER_SAVE.name());
+
+        try {
+            lraClient.closeLRA(nested);
+        } catch (jakarta.ws.rs.WebApplicationException e) {
+            log.info("closeLRA returned {}, coordinator crashed",
+                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
+        }
+
+        ensureCoordinatorAvailability(CRASH_RECOVERY_WAIT_S);
+        waitForNoActiveLra(nested, LRA_GONE_WAIT_MS);
+    }
+
+    @Test
+    void testAsyncComplete_duplicateCallViaProxyFailover() {
+        log.info("NestedCompleteIT: testAsyncComplete_duplicateCallViaProxyFailover");
+        URI parent = startTopLra("nested-complete-async-duplicate");
+        URI nested = prepareNestedLra(parent, "nested-complete-async-duplicate",
+                COMPENSATE, COMPLETE_ASYNC, STATUS_FOR_ASYNC_COMPLETE);
+
+        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_DURING_CLEANUP.name());
+
+        try {
+            lraClient.closeLRA(nested);
+        } catch (jakarta.ws.rs.WebApplicationException e) {
+            log.info("closeLRA returned {} — coordinator crashed after 202",
+                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
+        }
+
+        ensureCoordinatorAvailability(CRASH_RECOVERY_WAIT_S);
+        waitForNoActiveLra(nested, LRA_GONE_WAIT_MS);
+
+        int completeCalls = getAsyncCallCount(nested);
+        int statusCalls = getAsyncStatusCallCount(nested);
+        log.info("After async proxy failover: completeCalls={}, statusCalls={}", completeCalls, statusCalls);
+
+        assertEquals(1, completeCalls,
+                "Async @Complete should be called exactly once in END_DURING_CLEANUP failover");
+        assertTrue(statusCalls >= 1,
+                "Async duplicate path should poll @Status at least once, got " + statusCalls);
+    }
+
+    @Test
+    void testAsyncComplete_withStatus_crashAfterReceivingResponse() {
+        log.info("NestedCompleteIT: testAsyncComplete_withStatus_crashAfterReceivingResponse");
+        waitForAllCoordinators(CRASH_RECOVERY_WAIT_S);
+        resetProxyRouting();
+
+        URI parent = startTopLra("nested-complete-async-after-response");
+        URI nested = prepareNestedLra(parent, "nested-complete-async-after-response",
+                COMPENSATE, COMPLETE_ASYNC, STATUS_FOR_ASYNC_COMPLETE);
+
+        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_AFTER_PARTICIPANT_RESPONSE.name());
+
+        try {
+            lraClient.closeLRA(nested);
+        } catch (jakarta.ws.rs.WebApplicationException e) {
+            log.info("closeLRA returned {} — coordinator crashed after 202",
+                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
+        }
+
+        ensureCoordinatorAvailability(CRASH_RECOVERY_WAIT_S);
+        waitForNoActiveLra(nested, LRA_GONE_WAIT_MS);
+
+        int completeCalls = getAsyncCallCount(nested);
+        int statusCalls = getAsyncStatusCallCount(nested);
+        log.info("After async crash recovery: completeCalls={}, statusCalls={}", completeCalls, statusCalls);
+
+        assertEquals(1, completeCalls,
+                "Async @Complete should not be replayed after END_AFTER_PARTICIPANT_RESPONSE; got "
+                        + completeCalls + " calls");
+        assertTrue(statusCalls >= 1,
+                "Recovery should resolve via pre-flight @Status, got " + statusCalls + " polls");
+    }
+
+    @Test
+    void testParticipantTransientFailure_coordinatorRetries() {
+        log.info("NestedCompleteIT: testParticipantTransientFailure_coordinatorRetries");
+        URI parent = startTopLra("nested-complete-unreachable");
+        URI nested = prepareNestedLra(parent, "nested-complete-unreachable",
+                COMPENSATE, COMPLETE_UNREACHABLE);
+
+        try {
+            lraClient.closeLRA(nested);
+        } catch (jakarta.ws.rs.WebApplicationException e) {
+            log.info("closeLRA returned {} (503 from participant)",
+                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
+        }
+        waitForNoActiveLra(nested, RECOVERY_SCAN_WAIT_MS);
+    }
+
+    @Test
+    void testFailedToComplete_lraMovesToFailedToClose() {
+        log.info("NestedCompleteIT: testFailedToComplete_lraMovesToFailedToClose");
+        URI parent = startTopLra("nested-complete-fail");
+        URI nested = prepareNestedLra(parent, "nested-complete-fail",
+                COMPENSATE, COMPLETE_FAIL);
+
+        try {
+            lraClient.closeLRA(nested);
+        } catch (jakarta.ws.rs.WebApplicationException e) {
+            log.info("closeLRA returned {} for fail scenario",
+                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
+        }
+
+        waitForNoActiveLra(nested, LRA_GONE_FAST_MS);
+
+        List<String> activeIds = getActiveIds();
+        String nestedUid = LRAConstants.getLRAUid(nested);
+        boolean stillActive = activeIds.stream()
+                .map(LRAConstants::getLRAUid)
+                .anyMatch(nestedUid::equals);
+
+        assertTrue(!stillActive,
+                "Nested LRA should not be in the active list after FailedToComplete; found in " + activeIds);
+    }
+}
