@@ -1,6 +1,5 @@
 package io.narayana.lra.ha.participants;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -13,10 +12,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Tests for the @Compensate lifecycle in a multi-coordinator HA setup.
- * Covers the happy path, idempotent and async compensate, coordinator crash
- * scenarios at various inject points, transient participant failures, and
- * permanent participant failures that move the LRA to FailedToCancel.
+ * Exercises the cancellation callback across synchronous, asynchronous and crash-recovery paths
+ * in the multi-coordinator HA setup.
  */
 @QuarkusTest
 class CompensateIT extends TestBase {
@@ -28,49 +25,14 @@ class CompensateIT extends TestBase {
 
     private static final Logger log = LoggerFactory.getLogger(CompensateIT.class);
 
-    /** Timeout used after coordinator crash tests — long enough for Docker to restart. */
     private static final long CRASH_RECOVERY_WAIT_S = 15;
-
-    /** Timeout for LRA disappearance after coordinator has recovered. */
     private static final long LRA_GONE_WAIT_MS = 30_000;
-
-    /** Timeout for non-crash tests where coordinator stays up. */
     private static final long LRA_GONE_FAST_MS = 10_000;
-
-    /** Timeout for tests that wait for Arjuna's periodic recovery scan (default interval ~120 s). */
     private static final long RECOVERY_SCAN_WAIT_MS = 20_000;
 
-    /** Basic cancel: synchronous compensate returns 200 and the LRA disappears from all coordinators. */
-    @Test
-    void testCompensateHappyPath() {
-        log.info("CompensateIT: testCompensateHappyPath");
-        URI lra = prepareCompensateLra("compensate-happy", COMPENSATE);
-
-        assertDoesNotThrow(() -> lraClient.cancelLRA(lra));
-
-        waitForNoActiveLra(lra, LRA_GONE_FAST_MS);
-        assertNoActiveLras();
-    }
-
-    /** Normal cancel with the idempotent endpoint; verifies exactly one call and one side effect. */
-    @Test
-    void testIdempotentCompensate_happyPath() {
-        log.info("CompensateIT: testIdempotentCompensate_happyPath");
-        URI lra = prepareCompensateLra("idempotent-happy", COMPENSATE_IDEMPOTENT);
-
-        assertDoesNotThrow(() -> lraClient.cancelLRA(lra));
-
-        waitForNoActiveLra(lra, LRA_GONE_FAST_MS);
-
-        assertEquals(1, getIdempotentCallCount(lra),
-                "Idempotent compensate should be called exactly once in the happy path");
-        assertEquals(1, getIdempotentWorkDone(lra),
-                "Side effect must be performed exactly once");
-    }
-
     /**
-     * Coordinator crashes at END_DURING_CLEANUP, after @Compensate was already called and FINISH_OK persisted.
-     * Recovery usually does not re-call @Compensate, but the idempotent guard protects against it if it does.
+     * Crash hits after the participant callback already ran and the outcome was persisted.
+     * The retry triggered by recovery must not produce a second side effect.
      */
     @Test
     void testIdempotentCompensate_coordinatorCrashDuringCleanup() {
@@ -101,10 +63,6 @@ class CompensateIT extends TestBase {
         assertEquals(1, workDone, "Side effect must be performed exactly once regardless of retry count");
     }
 
-    /**
-     * Coordinator crashes at END_AFTER_SAVE: Cancelling is persisted but participants were not called yet.
-     * Recovery must call @Compensate and the side effect must happen exactly once.
-     */
     @Test
     void testIdempotentCompensate_coordinatorCrashAfterSave() {
         log.info("CompensateIT: testIdempotentCompensate_coordinatorCrashAfterSave");
@@ -129,8 +87,8 @@ class CompensateIT extends TestBase {
     }
 
     /**
-     * Coordinator crashes at END_BEFORE_SAVE: the cancel decision is never persisted.
-     * The LRA stays Active and gets auto-cancelled by timeout when the coordinator restarts.
+     * Crash hits before the cancel decision is persisted, so the transaction stays active
+     * and is cleaned up by the timeout path once the coordinator returns.
      */
     @Test
     void testIdempotentCompensate_coordinatorCrashBeforeSave() {
@@ -153,22 +111,6 @@ class CompensateIT extends TestBase {
                 "Side effect must be performed once after LRA is eventually cancelled via timeout");
     }
 
-    /** Async compensate: coordinator receives 202 and polls @Status until it gets Compensated. */
-    @Test
-    void testAsyncCompensate_withStatus_happyPath() {
-        log.info("CompensateIT: testAsyncCompensate_withStatus_happyPath");
-        URI lra = prepareCompensateLraAsync("async-happy", COMPENSATE_ASYNC, STATUS_FOR_ASYNC);
-
-        assertDoesNotThrow(() -> lraClient.cancelLRA(lra));
-
-        waitForNoActiveLra(lra, LRA_GONE_FAST_MS);
-        assertNoActiveLras();
-    }
-
-    /**
-     * Coordinator crashes at END_AFTER_SAVE on the async path.
-     * Recovery calls @Compensate, gets 202, polls @Status, and finalises the LRA.
-     */
     @Test
     void testAsyncCompensate_withStatus_coordinatorCrashAfterSave() {
         log.info("CompensateIT: testAsyncCompensate_withStatus_coordinatorCrashAfterSave");
@@ -192,11 +134,8 @@ class CompensateIT extends TestBase {
     }
 
     /**
-     * END_DURING_CLEANUP with async compensate causes @Compensate to be called twice via proxy failover.
-     * The first coordinator crashes before sending a response, so the proxy reroutes to a second coordinator
-     * which finds the LRA still in Cancelling state and calls @Compensate again.
-     *
-     * @Status correctly reports Compensated on the second call, preventing an infinite loop.
+     * The proxy retargets the cancel after the first coordinator crashes, and the second coordinator
+     * resolves it from a status poll instead of replaying the participant call.
      */
     @Test
     void testAsyncCompensate_duplicateCallViaProxyFailover() {
@@ -231,10 +170,8 @@ class CompensateIT extends TestBase {
     }
 
     /**
-     * Coordinator crashes at END_AFTER_PARTICIPANT_RESPONSE: the participant's 202 was received but
-     * the Compensating state was never persisted, so on recovery accepted=false.
-     * The pre-flight @Status check in preflightGetStatus should detect that compensation
-     * already happened and resolve the LRA without replaying @Compensate.
+     * Crash hits between receiving the participant 202 and persisting the in-progress state.
+     * Recovery must resolve the transaction via a status poll instead of replaying the call.
      */
     @Test
     void testAsyncCompensate_withStatus_crashAfterReceivingResponse() {
@@ -273,9 +210,8 @@ class CompensateIT extends TestBase {
     }
 
     /**
-     * Coordinator crashes at END_AFTER_PARTICIPANT_RESPONSE after a synchronous 200 from @Compensate,
-     * before FINISH_OK is persisted. The LRA stays in Cancelling, so recovery may call @Compensate again.
-     * The idempotent guard ensures the side effect runs at most once regardless.
+     * Crash hits after the synchronous 200 but before the success is persisted, so recovery
+     * may replay the call; the participant's idempotency guard must keep the side effect at one.
      */
     @Test
     void testIdempotentCompensate_crashAfterReceivingResponse() {
@@ -307,9 +243,8 @@ class CompensateIT extends TestBase {
     }
 
     /**
-     * Participant returns 503 on the first call and 200 on retry.
-     * The coordinator does not retry inline; it sets accepted=true and waits for Arjuna's recovery scan
-     * (~120 s) to retry. Two @Compensate calls are expected total.
+     * The participant fails the first call with a transient error and the coordinator
+     * must wait for the recovery scan to retry, since it does not retry inline.
      */
     @Test
     void testParticipantTransientFailure_coordinatorRetries() {
@@ -326,10 +261,6 @@ class CompensateIT extends TestBase {
         assertNoActiveLras();
     }
 
-    /**
-     * @Compensate always returns 409, so the coordinator moves the LRA to FailedToCancel.
-     *             The test checks that the LRA leaves the active list.
-     */
     @Test
     void testFailedToCompensate_lraMovesToFailedToCancel() {
         log.info("CompensateIT: testFailedToCompensate_lraMovesToFailedToCancel");

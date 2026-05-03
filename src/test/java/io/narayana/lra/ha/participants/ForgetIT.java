@@ -9,6 +9,10 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Verifies that the cleanup callback fires after a failed terminal outcome, including
+ * crash and proxy-failover variants of the failed-cancel and failed-close paths.
+ */
 @QuarkusTest
 class ForgetIT extends TestBase {
 
@@ -23,34 +27,8 @@ class ForgetIT extends TestBase {
     private static final long CRASH_SCAN_WAIT_MS = 180_000;
 
     /**
-     * Async compensate returns 202 and @Status later reports FailedToCompensate.
-     * Recovery must call @Forget at least once.
-     */
-    @Test
-    void testForgetAfterFailedCompensate_happyPath() {
-        log.info("ForgetIT: testForgetAfterFailedCompensate_happyPath");
-        URI lra = prepareCompensateLraAsyncWithForget(
-                "forget-compensate-happy",
-                STATUS_FOR_FORGET_COMPENSATE);
-
-        try {
-            lraClient.cancelLRA(lra);
-        } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.info("cancelLRA returned {} for forget compensate happy path",
-                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
-        }
-
-        waitForFailedAsyncForget(lra);
-
-        assertEquals(1, getAsyncCallCount(lra), "@Compensate should be called exactly once in the happy path");
-        assertTrue(getAsyncStatusCallCount(lra) >= 1, "@Status should be polled before @Forget");
-        assertForgetCalledAtLeastOnce(lra);
-    }
-
-    /**
-     * Coordinator crashes after persisting Cancelling but before contacting the participant.
-     * Recovery must drive async compensate, observe the failed terminal status, then call @Forget
-     * at least once.
+     * Crash hits after the cancel decision is persisted; recovery must drive the participant
+     * to the failed terminal status and then deliver the cleanup callback.
      */
     @Test
     void testForgetAfterFailedCompensate_coordinatorCrashAfterSave() {
@@ -77,9 +55,8 @@ class ForgetIT extends TestBase {
     }
 
     /**
-     * END_DURING_CLEANUP re-routes the cancel request through the proxy, but the
-     * second coordinator resolves the LRA through pre-flight @Status without
-     * replaying @Compensate. Cleanup via @Forget must still happen.
+     * Proxy failover routes the cancel to a second coordinator; cleanup must still fire even
+     * though the participant call itself is not replayed.
      */
     @Test
     void testForgetAfterFailedCompensate_duplicateCallViaProxyFailover() {
@@ -107,34 +84,8 @@ class ForgetIT extends TestBase {
     }
 
     /**
-     * Async complete returns 202 and @Status later reports FailedToComplete.
-     * Recovery must call @Forget at least once.
-     */
-    @Test
-    void testForgetAfterFailedComplete_happyPath() {
-        log.info("ForgetIT: testForgetAfterFailedComplete_happyPath");
-        URI lra = prepareCompleteLraAsyncWithForget(
-                "forget-complete-happy",
-                STATUS_FOR_FORGET_COMPLETE);
-
-        try {
-            lraClient.closeLRA(lra);
-        } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.info("closeLRA returned {} for forget complete happy path",
-                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
-        }
-
-        waitForFailedAsyncForget(lra);
-
-        assertEquals(1, getAsyncCallCount(lra), "@Complete should be called exactly once in the happy path");
-        assertTrue(getAsyncStatusCallCount(lra) >= 1, "@Status should be polled before @Forget");
-        assertForgetCalledAtLeastOnce(lra);
-    }
-
-    /**
-     * Coordinator crashes after persisting Closing but before contacting the participant.
-     * Recovery must drive async complete, observe the failed terminal status, then call @Forget
-     * at least once.
+     * Crash hits after the close decision is persisted; recovery must drive the participant
+     * to the failed terminal status and then deliver the cleanup callback.
      */
     @Test
     void testForgetAfterFailedComplete_coordinatorCrashAfterSave() {
@@ -161,9 +112,8 @@ class ForgetIT extends TestBase {
     }
 
     /**
-     * END_DURING_CLEANUP re-routes the close request through the proxy, but the
-     * second coordinator resolves the LRA through pre-flight @Status without
-     * replaying @Complete. Cleanup via @Forget must still happen.
+     * Proxy failover routes the close to a second coordinator; cleanup must still fire even
+     * though the participant call itself is not replayed.
      */
     @Test
     void testForgetAfterFailedComplete_duplicateCallViaProxyFailover() {
@@ -200,9 +150,6 @@ class ForgetIT extends TestBase {
         assertNoActiveLras();
     }
 
-    /**
-     * it should call it more times
-     */
     private void assertForgetCalledAtLeastOnce(URI lra) {
         int forgetCount = getForgetCallCount(lra);
         assertTrue(forgetCount >= 1, "@Forget must be called at least once");

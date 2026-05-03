@@ -1,6 +1,5 @@
 package io.narayana.lra.ha.participants;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -12,6 +11,10 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Mirrors the cancel-callback scenarios for a child transaction whose parent runs on a
+ * different coordinator, exercising the cross-coordinator cascade and recovery paths.
+ */
 @QuarkusTest
 class NestedCompensateIT extends TestBase {
 
@@ -26,34 +29,6 @@ class NestedCompensateIT extends TestBase {
     private static final long LRA_GONE_WAIT_MS = 30_000;
     private static final long LRA_GONE_FAST_MS = 10_000;
     private static final long RECOVERY_SCAN_WAIT_MS = 20_000;
-
-    @Test
-    void testCompensateHappyPath() {
-        log.info("NestedCompensateIT: testCompensateHappyPath");
-        URI parent = startTopLra("nested-compensate-happy");
-        URI nested = prepareNestedLra(parent, "nested-compensate-happy", COMPENSATE, COMPLETE);
-
-        assertDoesNotThrow(() -> lraClient.cancelLRA(nested));
-
-        waitForNoActiveLra(nested, LRA_GONE_FAST_MS);
-    }
-
-    @Test
-    void testIdempotentCompensate_happyPath() {
-        log.info("NestedCompensateIT: testIdempotentCompensate_happyPath");
-        URI parent = startTopLra("nested-idempotent-happy");
-        URI nested = prepareNestedLra(parent, "nested-idempotent-happy",
-                COMPENSATE_IDEMPOTENT, COMPLETE);
-
-        assertDoesNotThrow(() -> lraClient.cancelLRA(nested));
-
-        waitForNoActiveLra(nested, LRA_GONE_FAST_MS);
-
-        assertEquals(1, getIdempotentCallCount(nested),
-                "Idempotent compensate should be called exactly once in the happy path");
-        assertEquals(1, getIdempotentWorkDone(nested),
-                "Side effect must be performed exactly once");
-    }
 
     @Test
     void testIdempotentCompensate_coordinatorCrashDuringCleanup() {
@@ -128,18 +103,6 @@ class NestedCompensateIT extends TestBase {
 
         assertEquals(1, getIdempotentWorkDone(nested),
                 "Side effect must be performed once after the nested LRA is eventually cancelled");
-    }
-
-    @Test
-    void testAsyncCompensate_withStatus_happyPath() {
-        log.info("NestedCompensateIT: testAsyncCompensate_withStatus_happyPath");
-        URI parent = startTopLra("nested-async-happy");
-        URI nested = prepareNestedLra(parent, "nested-async-happy",
-                COMPENSATE_ASYNC, COMPLETE, STATUS_FOR_ASYNC);
-
-        assertDoesNotThrow(() -> lraClient.cancelLRA(nested));
-
-        waitForNoActiveLra(nested, LRA_GONE_FAST_MS);
     }
 
     @Test

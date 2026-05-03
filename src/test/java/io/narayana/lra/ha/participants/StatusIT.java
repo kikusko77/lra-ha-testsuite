@@ -11,31 +11,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Tests for the {@code @Status} annotation per the MicroProfile LRA spec.
- *
- * <p>
- * Background: when a participant returns {@code 202 Accepted} from
- * {@code @Compensate} or {@code @Complete}, the coordinator moves the participant
- * to an "accepted" state and repeatedly calls the {@code @Status} endpoint to
- * determine the final outcome. The spec defines three observable behaviours that
- * are tested here and are not covered by the async tests in CompensateIT /
- * CompleteIT:
- *
- * <ol>
- * <li><b>410 Gone</b> — the {@code @Status} endpoint returns HTTP 410. Per spec
- * this has the same effect as 200: the participant has already
- * compensated/completed and no longer remembers the LRA. The coordinator
- * must resolve the LRA without replaying the callback.</li>
- *
- * <li><b>Intermediate state polling</b> — {@code @Status} initially returns
- * {@code Compensating} or {@code Completing} (in-progress), then transitions
- * to the terminal state on a later poll. The coordinator must keep polling
- * until it observes a terminal value.</li>
- *
- * <li><b>HA crash during @Status polling</b> — coordinator crashes after
- * receiving the initial 202 but before polling {@code @Status} to completion.
- * Recovery must re-invoke {@code @Status} and resolve the LRA correctly.</li>
- * </ol>
+ * Covers the asynchronous status-polling resolution paths that the synchronous suites cannot
+ * exercise: 410 Gone, intermediate in-progress reports, and crash-then-poll recovery.
  */
 @QuarkusTest
 class StatusIT extends TestBase {
@@ -52,10 +29,8 @@ class StatusIT extends TestBase {
     private static final long CRASH_RECOVERY_WAIT_S = 125;
 
     /**
-     * Async {@code @Compensate} returns 202, then {@code @Status} returns 410 Gone.
-     * Per spec, 410 is equivalent to 200: "the participant no longer remembers the LRA."
-     * The coordinator must resolve the LRA as cancelled without re-calling
-     * {@code @Compensate}.
+     * The participant signals that it no longer remembers the transaction, so the coordinator
+     * must resolve as cancelled without replaying the callback.
      */
     @Test
     void testAsyncCompensate_statusGone410_lraResolves() {
@@ -82,9 +57,8 @@ class StatusIT extends TestBase {
     }
 
     /**
-     * Async {@code @Complete} returns 202, then {@code @Status} returns 410 Gone.
-     * The coordinator must resolve the LRA as closed without re-calling
-     * {@code @Complete}.
+     * The participant signals that it no longer remembers the transaction, so the coordinator
+     * must resolve as closed without replaying the callback.
      */
     @Test
     void testAsyncComplete_statusGone410_lraResolves() {
@@ -111,9 +85,8 @@ class StatusIT extends TestBase {
     }
 
     /**
-     * Async {@code @Compensate} returns 202. The first {@code @Status} poll returns
-     * {@code Compensating}; subsequent polls return {@code Compensated}.
-     * The coordinator must keep polling until it observes the terminal state.
+     * The participant first reports an in-progress state and only later moves to terminal,
+     * so the coordinator must keep polling instead of giving up after the first response.
      */
     @Test
     void testAsyncCompensate_intermediateCompensatingState_lraResolves() {
@@ -149,9 +122,8 @@ class StatusIT extends TestBase {
     }
 
     /**
-     * Async {@code @Complete} returns 202. The first {@code @Status} poll returns
-     * {@code Completing}; subsequent polls return {@code Completed}.
-     * The coordinator must keep polling until it observes the terminal state.
+     * The participant first reports an in-progress state and only later moves to terminal,
+     * so the coordinator must keep polling instead of giving up after the first response.
      */
     @Test
     void testAsyncComplete_intermediateCompletingState_lraResolves() {
@@ -181,11 +153,8 @@ class StatusIT extends TestBase {
     }
 
     /**
-     * Coordinator crashes at END_AFTER_PARTICIPANT_RESPONSE — it received the
-     * async 202 from {@code @Compensate} but crashed before persisting the
-     * Compensating state. On recovery the coordinator must re-consult
-     * {@code @Status} (the 410 Gone variant) and resolve the LRA without
-     * replaying {@code @Compensate}.
+     * Crash hits between the async 202 and the in-progress persistence; recovery must
+     * resolve via a status poll instead of replaying the cancellation callback.
      */
     @Test
     void testAsyncCompensate_statusGone_coordinatorCrashAfterParticipantResponse() {
@@ -224,9 +193,8 @@ class StatusIT extends TestBase {
     }
 
     /**
-     * Coordinator crashes at END_AFTER_PARTICIPANT_RESPONSE on the close path.
-     * Recovery must consult {@code @Status} (intermediate variant) and poll until
-     * it observes {@code Completed}.
+     * Crash hits between the async 202 and the in-progress persistence; recovery must
+     * keep polling the participant until it observes the terminal close state.
      */
     @Test
     void testAsyncComplete_intermediateStatus_coordinatorCrashAfterParticipantResponse() {

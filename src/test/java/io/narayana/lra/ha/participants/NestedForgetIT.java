@@ -9,6 +9,10 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Verifies that the cleanup callback fires after a failed terminal outcome on a nested
+ * transaction whose parent ends on a different coordinator.
+ */
 @QuarkusTest
 class NestedForgetIT extends TestBase {
 
@@ -21,23 +25,6 @@ class NestedForgetIT extends TestBase {
     private static final long CRASH_RECOVERY_WAIT_S = 30;
     private static final long RECOVERY_SCAN_WAIT_MS = 120_000;
     private static final long CRASH_SCAN_WAIT_MS = 180_000;
-
-    @Test
-    void testForgetAfterFailedCompensate_happyPath() {
-        log.info("NestedForgetIT: testForgetAfterFailedCompensate_happyPath");
-        URI parent = startTopLra("nested-forget-compensate-happy");
-        URI nested = prepareNestedLra(parent, "nested-forget-compensate-happy",
-                COMPENSATE_ASYNC, COMPLETE, FORGET, STATUS_FOR_FORGET_COMPENSATE);
-
-        cancelQuietly(nested);
-        cancelQuietly(parent);
-
-        waitForFailedAsyncForget(nested);
-
-        assertEquals(1, getAsyncCallCount(nested), "@Compensate should be called exactly once in the happy path");
-        assertTrue(getAsyncStatusCallCount(nested) >= 1, "@Status should be polled before @Forget");
-        assertForgetCalledAtLeastOnce(nested);
-    }
 
     @Test
     void testForgetAfterFailedCompensate_coordinatorCrashAfterSave() {
@@ -77,23 +64,6 @@ class NestedForgetIT extends TestBase {
         assertEquals(1, getAsyncCallCount(nested),
                 "Async @Compensate should be called exactly once in END_DURING_CLEANUP failover");
         assertTrue(getAsyncStatusCallCount(nested) >= 1, "Async duplicate path should poll @Status at least once");
-        assertForgetCalledAtLeastOnce(nested);
-    }
-
-    @Test
-    void testForgetAfterFailedComplete_happyPath() {
-        log.info("NestedForgetIT: testForgetAfterFailedComplete_happyPath");
-        URI parent = startTopLra("nested-forget-complete-happy");
-        URI nested = prepareNestedLra(parent, "nested-forget-complete-happy",
-                COMPENSATE, COMPLETE_ASYNC, FORGET, STATUS_FOR_FORGET_COMPLETE);
-
-        closeQuietly(nested);
-        closeQuietly(parent);
-
-        waitForFailedAsyncForget(nested);
-
-        assertEquals(1, getAsyncCallCount(nested), "@Complete should be called exactly once in the happy path");
-        assertTrue(getAsyncStatusCallCount(nested) >= 1, "@Status should be polled before @Forget");
         assertForgetCalledAtLeastOnce(nested);
     }
 

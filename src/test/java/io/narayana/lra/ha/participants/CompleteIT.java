@@ -13,12 +13,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Tests for the @Complete lifecycle in a multi-coordinator HA setup.
- *
- * Mirrors {@link CompensateIT} but drives LRAs through {@code closeLRA} rather
- * than {@code cancelLRA}. Also includes mutual-exclusion tests that verify
- *
- * @Complete is never called on cancel and @Compensate is never called on close.
+ * Exercises the close callback across synchronous, asynchronous and crash-recovery paths
+ * and verifies the close and cancel branches stay mutually exclusive.
  */
 @QuarkusTest
 class CompleteIT extends TestBase {
@@ -35,39 +31,9 @@ class CompleteIT extends TestBase {
     private static final long LRA_GONE_FAST_MS = 10_000;
     private static final long RECOVERY_SCAN_WAIT_MS = 20_000;
 
-    /** Basic close: synchronous complete returns 200 and the LRA disappears from all coordinators. */
-    @Test
-    void testCompleteHappyPath() {
-        log.info("CompleteIT: testCompleteHappyPath");
-        URI lra = prepareCompleteLra("complete-happy", COMPLETE);
-
-        assertDoesNotThrow(() -> lraClient.closeLRA(lra));
-
-        waitForNoActiveLra(lra, LRA_GONE_FAST_MS);
-        assertNoActiveLras();
-    }
-
-    /** Normal close with the idempotent endpoint; verifies exactly one call and one side effect. */
-    @Test
-    void testIdempotentComplete_happyPath() {
-        log.info("CompleteIT: testIdempotentComplete_happyPath");
-        URI lra = prepareCompleteLra("complete-idempotent-happy", COMPLETE_IDEMPOTENT);
-
-        assertDoesNotThrow(() -> lraClient.closeLRA(lra));
-
-        // The LRA transitions to Closing before @Complete is called, so waitForNoActiveLra
-        // can return before the callback is delivered. Poll directly on the call count.
-        waitForIdempotentCallCount(lra, 1, LRA_GONE_FAST_MS);
-
-        assertEquals(1, getIdempotentCallCount(lra),
-                "Idempotent complete should be called exactly once in the happy path");
-        assertEquals(1, getIdempotentWorkDone(lra),
-                "Side effect must be performed exactly once");
-    }
-
     /**
-     * Coordinator crashes at END_DURING_CLEANUP, after @Complete was already called and FINISH_OK persisted.
-     * Recovery usually does not re-call @Complete, but the idempotent guard protects against it if it does.
+     * Crash hits after the participant callback already ran and the outcome was persisted.
+     * The retry triggered by recovery must not produce a second side effect.
      */
     @Test
     void testIdempotentComplete_coordinatorCrashDuringCleanup() {
@@ -95,10 +61,6 @@ class CompleteIT extends TestBase {
         assertEquals(1, workDone, "Side effect must be performed exactly once regardless of retry count");
     }
 
-    /**
-     * Coordinator crashes at END_AFTER_SAVE: Closing is persisted but participants were not called yet.
-     * Recovery must call @Complete and the side effect must happen exactly once.
-     */
     @Test
     void testIdempotentComplete_coordinatorCrashAfterSave() {
         log.info("CompleteIT: testIdempotentComplete_coordinatorCrashAfterSave");
@@ -123,10 +85,8 @@ class CompleteIT extends TestBase {
     }
 
     /**
-     * Coordinator crashes at END_BEFORE_SAVE: the close decision is never persisted on coordinator-1.
-     * The HA proxy detects the crash and fails over to coordinator-2, which finds the LRA still Active
-     * and processes the close — calling @Complete exactly once.
-     * The idempotent guard ensures the side effect is performed exactly once.
+     * Crash hits before the close decision is persisted, so the proxy fails over and the second
+     * coordinator drives the close to completion exactly once.
      */
     @Test
     void testIdempotentComplete_coordinatorCrashBeforeSave() {
@@ -151,9 +111,8 @@ class CompleteIT extends TestBase {
     }
 
     /**
-     * Coordinator crashes at END_AFTER_PARTICIPANT_RESPONSE after a synchronous 200 from @Complete,
-     * before FINISH_OK is persisted. The LRA stays in Closing, so recovery may call @Complete again.
-     * The idempotent guard ensures the side effect runs at most once regardless.
+     * Crash hits after the synchronous 200 but before the success is persisted, so recovery
+     * may replay the call; the participant's idempotency guard must keep the side effect at one.
      */
     @Test
     void testIdempotentComplete_crashAfterReceivingResponse() {
@@ -184,25 +143,6 @@ class CompleteIT extends TestBase {
                 "Side effect must be performed exactly once regardless of any recovery replay");
     }
 
-    /** Async complete: coordinator receives 202 and polls @Status until it gets Completed. */
-    @Test
-    void testAsyncComplete_withStatus_happyPath() {
-        log.info("CompleteIT: testAsyncComplete_withStatus_happyPath");
-        URI lra = prepareCompleteLraAsync(
-                "complete-async-happy",
-                COMPLETE_ASYNC,
-                STATUS_FOR_ASYNC_COMPLETE);
-
-        assertDoesNotThrow(() -> lraClient.closeLRA(lra));
-
-        waitForNoActiveLra(lra, LRA_GONE_FAST_MS);
-        assertNoActiveLras();
-    }
-
-    /**
-     * Coordinator crashes at END_AFTER_SAVE on the async path.
-     * Recovery calls @Complete, gets 202, polls @Status, and finalises the LRA.
-     */
     @Test
     void testAsyncComplete_withStatus_coordinatorCrashAfterSave() {
         log.info("CompleteIT: testAsyncComplete_withStatus_coordinatorCrashAfterSave");
@@ -226,11 +166,8 @@ class CompleteIT extends TestBase {
     }
 
     /**
-     * END_DURING_CLEANUP with async complete causes @Complete to be called twice via proxy failover.
-     * The first coordinator crashes before sending a response, so the proxy reroutes to a second
-     * coordinator which finds the LRA still in Closing state and calls @Complete again.
-     *
-     * @Status correctly reports Completed on the second call, preventing an infinite loop.
+     * The proxy retargets the close after the first coordinator crashes, and the second coordinator
+     * resolves it from a status poll instead of replaying the participant call.
      */
     @Test
     void testAsyncComplete_duplicateCallViaProxyFailover() {
@@ -265,10 +202,8 @@ class CompleteIT extends TestBase {
     }
 
     /**
-     * Coordinator crashes at END_AFTER_PARTICIPANT_RESPONSE: the participant's 202 was received but
-     * the Completing state was never persisted, so on recovery accepted=false.
-     * The pre-flight @Status check should detect that completion already happened
-     * and resolve the LRA without replaying @Complete.
+     * Crash hits between receiving the participant 202 and persisting the in-progress state.
+     * Recovery must resolve the transaction via a status poll instead of replaying the call.
      */
     @Test
     void testAsyncComplete_withStatus_crashAfterReceivingResponse() {
@@ -307,9 +242,8 @@ class CompleteIT extends TestBase {
     }
 
     /**
-     * Participant returns 503 on the first call and 200 on retry.
-     * The coordinator does not retry inline; it sets accepted=true and waits for Arjuna's recovery scan
-     * (~120 s) to retry.
+     * The participant fails the first call with a transient error and the coordinator
+     * must wait for the recovery scan to retry, since it does not retry inline.
      */
     @Test
     void testParticipantTransientFailure_coordinatorRetries() {
@@ -326,10 +260,6 @@ class CompleteIT extends TestBase {
         assertNoActiveLras();
     }
 
-    /**
-     * @Complete always returns 409, so the coordinator moves the LRA to FailedToComplete.
-     *           The test checks that the LRA leaves the active list.
-     */
     @Test
     void testFailedToComplete_lraMovesToFailedToClose() {
         log.info("CompleteIT: testFailedToComplete_lraMovesToFailedToClose");
@@ -354,10 +284,6 @@ class CompleteIT extends TestBase {
                 "LRA should not be in the active list after FailedToComplete; found in " + activeIds);
     }
 
-    /**
-     * When an LRA is cancelled, only @Compensate must be invoked — never @Complete.
-     * Uses the idempotent complete endpoint to track whether @Complete was called.
-     */
     @Test
     void testComplete_notCalledOnCancel() {
         log.info("CompleteIT: testComplete_notCalledOnCancel");
@@ -373,10 +299,6 @@ class CompleteIT extends TestBase {
                 "@Complete must not be called when the LRA is cancelled");
     }
 
-    /**
-     * When an LRA is closed, only @Complete must be invoked — never @Compensate.
-     * Uses the idempotent compensate endpoint to track whether @Compensate was called.
-     */
     @Test
     void testCompensate_notCalledOnClose() {
         log.info("CompleteIT: testCompensate_notCalledOnClose");

@@ -20,34 +20,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Participant dedicated to StatusIT.
- *
- * <p>
- * Covers two spec-defined {@code @Status} scenarios that are not exercised by
- * the async-compensate/complete tests in CompensateIT / CompleteIT:
- *
- * <ol>
- * <li><b>410 Gone</b> — the spec says a 410 response from {@code @Status} has the
- * same effect as 200: the participant signals it already completed/compensated
- * and no longer tracks the LRA. The coordinator must resolve the LRA without
- * replaying the {@code @Compensate} or {@code @Complete} callback.
- * Endpoints: {@code compensate-async} / {@code complete-async} paired with
- * {@code status-gone}.</li>
- *
- * <li><b>Intermediate state</b> — the coordinator must keep polling {@code @Status}
- * until it reaches a terminal state ({@code Compensated} / {@code Completed}).
- * The first poll returns the in-progress state ({@code Compensating} /
- * {@code Completing}); subsequent polls return the terminal state.
- * Endpoints: {@code compensate-async} / {@code complete-async} paired with
- * {@code status-intermediate-compensate} / {@code status-intermediate-complete}.
- * </li>
- * </ol>
- *
- * <p>
- * All async endpoints share the same {@code asyncCallCounts} map (keyed by LRA
- * id) because each test uses a unique LRA, so counts never collide across tests.
- * Separate status-call-count maps are kept per status variant so tests can assert
- * the exact number of polls.
+ * Exposes the asynchronous status-polling variants the dedicated polling suite needs:
+ * a "gone" response and an in-progress-then-terminal sequence.
  */
 @ApplicationScoped
 @Path("status-participant")

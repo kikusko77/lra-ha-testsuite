@@ -22,15 +22,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Participant dedicated to ForgetIT.
- *
- * The @Forget trigger path used in this suite is:
- * participant returns 202 → coordinator polls @Status → @Status reports
- * FailedToCompensate/FailedToComplete → coordinator calls @Forget.
- *
- * Two status variants are provided — one for the compensate path and one for the
- * complete path — both reuse the same async call tracking maps since each test
- * drives a unique LRA id.
+ * Drives the cleanup-after-failure path: returns 202, then reports a failed terminal
+ * status to the coordinator's poll, which in turn triggers the cleanup callback.
  */
 @ApplicationScoped
 @Path("forget-participant")

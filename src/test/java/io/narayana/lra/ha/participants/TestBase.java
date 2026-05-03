@@ -42,7 +42,6 @@ public abstract class TestBase implements ParticipantEndpoints {
     protected Client client;
     protected List<URI> lrasToAfterFinish;
 
-    /** Direct URIs of the real coordinator backends, used for fault-injection. */
     protected List<URI> coordinatorUris;
 
     @Inject
@@ -84,10 +83,6 @@ public abstract class TestBase implements ParticipantEndpoints {
         }
     }
 
-    /**
-     * Base path of the participant resource used by this test class.
-     * Override in each IT subclass to return the dedicated participant path.
-     */
     protected String participantPath() {
         return "participant";
     }
@@ -124,6 +119,40 @@ public abstract class TestBase implements ParticipantEndpoints {
             }
         }
         return new ArrayList<>();
+    }
+
+    /**
+     * Each transaction lives in a single backend's local object store, so a single-backend
+     * read misses transactions created elsewhere; this union is needed for the nested cases.
+     */
+    protected List<String> getAllActiveIdsAcrossCoordinators() {
+        java.util.LinkedHashSet<String> all = new java.util.LinkedHashSet<>();
+        for (URI base : coordinatorUris) {
+            Response r = null;
+            try {
+                r = client.target(base)
+                        .path("active/ids")
+                        .request(MediaType.APPLICATION_JSON)
+                        .get();
+                if (r.getStatus() == 200) {
+                    String json = r.readEntity(String.class);
+                    all.addAll(JSON.readValue(json, new TypeReference<List<String>>() {
+                    }));
+                }
+            } catch (Exception ignored) {
+            } finally {
+                if (r != null)
+                    r.close();
+            }
+        }
+        return new ArrayList<>(all);
+    }
+
+    protected boolean isLraActiveAnywhere(URI lraId) {
+        String targetUid = LRAConstants.getLRAUid(lraId);
+        return getAllActiveIdsAcrossCoordinators().stream()
+                .map(LRAConstants::getLRAUid)
+                .anyMatch(targetUid::equals);
     }
 
     protected void enableFailurePoint(URI coordinatorBase, String point) {
@@ -251,13 +280,17 @@ public abstract class TestBase implements ParticipantEndpoints {
         }
     }
 
+    /**
+     * Polls every backend because the transaction lives in only one local object store and
+     * a single-backend read can miss it.
+     */
     protected void waitForNoActiveLra(URI lraId, long timeoutMs) {
         String targetLraUid = LRAConstants.getLRAUid(lraId);
         try {
-            Awaitility.await("waiting for LRA " + targetLraUid + " to leave the active list")
+            Awaitility.await("waiting for LRA " + targetLraUid + " to leave the cluster active list")
                     .atMost(Duration.ofMillis(timeoutMs))
                     .pollInterval(Duration.ofMillis(200))
-                    .until(() -> getActiveIds().stream()
+                    .until(() -> getAllActiveIdsAcrossCoordinators().stream()
                             .map(LRAConstants::getLRAUid)
                             .noneMatch(targetLraUid::equals));
         } catch (ConditionTimeoutException ignored) {
@@ -488,11 +521,6 @@ public abstract class TestBase implements ParticipantEndpoints {
         }
     }
 
-    /**
-     * Enroll a participant using the given compensate/complete paths AND register
-     * an additional @AfterLRA notification URI (the {@code afterPath} endpoint).
-     * The coordinator calls the after URI once the LRA reaches a terminal state.
-     */
     protected URI prepareLraWithAfterLra(
             String clientIdPrefix,
             String compensatePath,
@@ -514,5 +542,71 @@ public abstract class TestBase implements ParticipantEndpoints {
                 .info("Enrolled compensate={}, complete={}, after={}, recoveryUrl={}",
                         compensate, complete, after, recovery);
         return lra;
+    }
+
+    // -------------------------------------------------------------------------
+    // Nested LRA helpers — return the nested URI; the parent is added to the
+    // cleanup list so afterEach tears down the whole hierarchy.
+    // -------------------------------------------------------------------------
+
+    protected URI startTopLra(String scenario) {
+        URI parent = startLra(participantClientId(scenario) + "-parent");
+        lrasToAfterFinish.add(parent);
+        return parent;
+    }
+
+    protected URI startNestedLra(URI parent, String scenario) {
+        URI nested = startLra(parent, participantClientId(scenario) + "-nested");
+        lrasToAfterFinish.add(nested);
+        return nested;
+    }
+
+    protected URI prepareNestedLra(
+            URI parent,
+            String scenario,
+            String compensatePath,
+            String completePath) {
+        return prepareLra(parent, participantClientId(scenario), compensatePath, completePath, null, null);
+    }
+
+    protected URI prepareNestedLra(
+            URI parent,
+            String scenario,
+            String compensatePath,
+            String completePath,
+            String statusPath) {
+        return prepareLra(parent, participantClientId(scenario), compensatePath, completePath, null, statusPath);
+    }
+
+    protected URI prepareNestedLra(
+            URI parent,
+            String scenario,
+            String compensatePath,
+            String completePath,
+            String forgetPath,
+            String statusPath) {
+        return prepareLra(parent, participantClientId(scenario), compensatePath, completePath, forgetPath, statusPath);
+    }
+
+    protected URI prepareNestedLraWithAfterLra(
+            URI parent,
+            String scenario,
+            String compensatePath,
+            String completePath,
+            String afterPath) {
+        URI nested = startLra(parent, participantClientId(scenario) + "-nested");
+        lrasToAfterFinish.add(nested);
+
+        URI compensate = participantUri(compensatePath);
+        URI complete = participantUri(completePath);
+        URI after = participantUri(afterPath);
+
+        URI recovery = lraClient.joinLRA(nested, 30L, compensate, complete, null, null, after, null,
+                new StringBuilder());
+
+        LoggerFactory.getLogger(getClass())
+                .info("Enrolled NESTED compensate={}, complete={}, after={}, parent={}, nested={}, recoveryUrl={}",
+                        compensate, complete, after, parent, nested, recovery);
+        return nested;
     }
 }

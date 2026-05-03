@@ -14,8 +14,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Minimal participant used by tests that only need a valid compensate/complete
- * endpoint for LRA enrollment (JoinLraIT, StartLraIT).
+ * Minimal participant exposing only the compensate and complete endpoints needed
+ * for enrollment in tests that exercise lifecycle other than the callbacks themselves.
  */
 @ApplicationScoped
 @Path("participant")

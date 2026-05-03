@@ -10,6 +10,10 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Exercises ending a nested transaction across crash points and cascade orderings,
+ * confirming the parent is left intact and the cleanup eventually completes.
+ */
 @QuarkusTest
 class NestedEndLraIT extends TestBase {
 

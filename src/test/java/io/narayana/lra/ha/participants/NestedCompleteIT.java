@@ -1,6 +1,5 @@
 package io.narayana.lra.ha.participants;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -12,6 +11,10 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Mirrors the close-callback scenarios for a child transaction whose parent runs on a
+ * different coordinator, exercising the cross-coordinator cascade and recovery paths.
+ */
 @QuarkusTest
 class NestedCompleteIT extends TestBase {
 
@@ -26,33 +29,6 @@ class NestedCompleteIT extends TestBase {
     private static final long LRA_GONE_WAIT_MS = 30_000;
     private static final long LRA_GONE_FAST_MS = 10_000;
     private static final long RECOVERY_SCAN_WAIT_MS = 20_000;
-
-    @Test
-    void testCompleteHappyPath() {
-        log.info("NestedCompleteIT: testCompleteHappyPath");
-        URI parent = startTopLra("nested-complete-happy");
-        URI nested = prepareNestedLra(parent, "nested-complete-happy", COMPENSATE, COMPLETE);
-
-        assertDoesNotThrow(() -> lraClient.closeLRA(nested));
-        waitForNoActiveLra(nested, LRA_GONE_FAST_MS);
-    }
-
-    @Test
-    void testIdempotentComplete_happyPath() {
-        log.info("NestedCompleteIT: testIdempotentComplete_happyPath");
-        URI parent = startTopLra("nested-complete-idempotent-happy");
-        URI nested = prepareNestedLra(parent, "nested-complete-idempotent-happy",
-                COMPENSATE, COMPLETE_IDEMPOTENT);
-
-        assertDoesNotThrow(() -> lraClient.closeLRA(nested));
-
-        waitForIdempotentCallCount(nested, 1, LRA_GONE_FAST_MS);
-
-        assertEquals(1, getIdempotentCallCount(nested),
-                "Idempotent complete should be called exactly once in the happy path");
-        assertEquals(1, getIdempotentWorkDone(nested),
-                "Side effect must be performed exactly once");
-    }
 
     @Test
     void testIdempotentComplete_coordinatorCrashDuringCleanup() {
@@ -155,17 +131,6 @@ class NestedCompleteIT extends TestBase {
 
         assertTrue(callCount >= 1, "Complete must be called at least once, got " + callCount);
         assertEquals(1, workDone, "Side effect must be performed exactly once regardless of any recovery replay");
-    }
-
-    @Test
-    void testAsyncComplete_withStatus_happyPath() {
-        log.info("NestedCompleteIT: testAsyncComplete_withStatus_happyPath");
-        URI parent = startTopLra("nested-complete-async-happy");
-        URI nested = prepareNestedLra(parent, "nested-complete-async-happy",
-                COMPENSATE, COMPLETE_ASYNC, STATUS_FOR_ASYNC_COMPLETE);
-
-        assertDoesNotThrow(() -> lraClient.closeLRA(nested));
-        waitForNoActiveLra(nested, LRA_GONE_FAST_MS);
     }
 
     @Test

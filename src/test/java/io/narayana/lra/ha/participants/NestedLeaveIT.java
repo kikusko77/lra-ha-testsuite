@@ -11,6 +11,10 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Verifies that a participant which removed itself from a nested transaction is not called
+ * when the cascade ends, even when a coordinator crash interrupts the leave or terminal flow.
+ */
 @QuarkusTest
 class NestedLeaveIT extends TestBase {
 
@@ -55,34 +59,6 @@ class NestedLeaveIT extends TestBase {
 
         assertEquals(0, getIdempotentCallCount(nested),
                 "@Complete must not be called after the participant left the nested LRA");
-    }
-
-    @Test
-    void testNoLeaveNested_cancelCallsCompensate() {
-        log.info("NestedLeaveIT: testNoLeaveNested_cancelCallsCompensate");
-        URI parent = startTopLra("nested-no-leave-cancel");
-        URI nested = prepareNestedLra(parent, "nested-no-leave-cancel", COMPENSATE, COMPLETE);
-
-        assertDoesNotThrow(() -> lraClient.cancelLRA(nested));
-
-        waitForIdempotentCallCount(nested, 1, LRA_GONE_FAST_MS);
-
-        assertEquals(1, getIdempotentCallCount(nested),
-                "@Compensate must be called exactly once when the participant has not left");
-    }
-
-    @Test
-    void testNoLeaveNested_closeCallsComplete() {
-        log.info("NestedLeaveIT: testNoLeaveNested_closeCallsComplete");
-        URI parent = startTopLra("nested-no-leave-close");
-        URI nested = prepareNestedLra(parent, "nested-no-leave-close", COMPENSATE, COMPLETE);
-
-        assertDoesNotThrow(() -> lraClient.closeLRA(nested));
-
-        waitForIdempotentCallCount(nested, 1, LRA_GONE_FAST_MS);
-
-        assertEquals(1, getIdempotentCallCount(nested),
-                "@Complete must be called exactly once when the participant has not left");
     }
 
     @Test

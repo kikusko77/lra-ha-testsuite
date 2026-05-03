@@ -19,18 +19,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Participant dedicated to LeaveIT.
- *
- * The @Leave mechanism: when the participant calls the {@code @leave} endpoint with an
- * active LRA context header, the Narayana ServerLRAFilter intercepts the request,
- * builds the compensator Link from the {@code @Compensate} and {@code @Complete}
- * annotations on this class, and calls {@code PUT /{lraId}/remove} on the
- * coordinator. The coordinator removes the participant — it will no longer
- * receive {@code @Compensate} or {@code @Complete} callbacks when the LRA ends.
- *
- * Both annotations are required: the filter aborts with 400 if the compensator
- * Link it builds lacks either a compensate or complete URI.
- *
+ * Participant that can remove itself from an active transaction; the coordinator then
+ * skips it on every subsequent terminal callback.
  */
 @ApplicationScoped
 @Path("leave-participant")
@@ -38,7 +28,6 @@ public class LeaveParticipant {
 
     private static final Logger log = LoggerFactory.getLogger(LeaveParticipant.class);
 
-    /** Shared call tracker for both compensate and complete endpoints. */
     private final ConcurrentHashMap<String, AtomicInteger> callCounts = new ConcurrentHashMap<>();
 
     @Compensate

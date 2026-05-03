@@ -10,6 +10,10 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Mirrors the asynchronous status-polling resolution paths for nested transactions whose
+ * parent ends on a different coordinator.
+ */
 @QuarkusTest
 class NestedStatusIT extends TestBase {
 

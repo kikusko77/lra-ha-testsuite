@@ -12,6 +12,10 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Confirms that a participant joining a nested transaction does not leave duplicate or
+ * orphaned records when the coordinator crashes mid-enrollment.
+ */
 @QuarkusTest
 class NestedJoinLraIT extends TestBase {
 

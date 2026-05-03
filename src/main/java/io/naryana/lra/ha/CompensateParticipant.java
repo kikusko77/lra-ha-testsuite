@@ -20,9 +20,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Participant dedicated to CompensateIT.
- * Provides all @Compensate variants (sync, idempotent, async, fail, unreachable)
- * plus the diagnostic endpoints those tests assert on.
+ * Provides every cancellation-callback variant (synchronous, idempotent, asynchronous,
+ * permanent failure, transient failure) along with diagnostic call counters.
  */
 @ApplicationScoped
 @Path("compensate-participant")

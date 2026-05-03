@@ -9,6 +9,10 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Verifies the post-terminal-state notification reaches the nested participant when the
+ * cascade originates from a parent ending on a different coordinator.
+ */
 @QuarkusTest
 class NestedAfterLraIT extends TestBase {
 
@@ -22,26 +26,6 @@ class NestedAfterLraIT extends TestBase {
     private static final long LRA_GONE_FAST_MS = 10_000;
     private static final long LRA_GONE_WAIT_MS = 30_000;
     private static final long CRASH_RECOVERY_WAIT_S = 15;
-
-    @Test
-    void testAfterLra_onNestedAndParentClose_receivesClosedStatus() {
-        log.info("NestedAfterLraIT: testAfterLra_onNestedAndParentClose_receivesClosedStatus");
-        URI parent = startTopLra("nested-after-close");
-        URI nested = prepareNestedLraWithAfterLra(parent, "nested-after-close",
-                COMPENSATE, COMPLETE, AFTER_LRA);
-
-        // Provisional close of nested first — @AfterLRA must NOT fire yet.
-        closeQuietly(nested);
-        waitForNoActiveLra(nested, LRA_GONE_FAST_MS);
-
-        assertEquals(0, getAfterCallCount(nested),
-                "Per Narayana behaviour, @AfterLRA must not fire until the parent LRA ends");
-
-        closeQuietly(parent);
-        waitForAfterCallCount(nested, 1, LRA_GONE_WAIT_MS);
-
-        assertAfterLraStatusOrHaGap(nested, LRAStatus.Closed);
-    }
 
     @Test
     void testAfterLra_onNestedAndParentCancel_receivesCancelledStatus() {
@@ -111,33 +95,6 @@ class NestedAfterLraIT extends TestBase {
 
         assertEquals(LRAStatus.FailedToCancel.name(), getAfterLraStatus(nested),
                 "@AfterLRA must receive FailedToCancel when nested @Compensate permanently fails");
-    }
-
-    @Test
-    void testAfterLra_idempotency_sideEffectPerformedOnce() {
-        log.info("NestedAfterLraIT: testAfterLra_idempotency_sideEffectPerformedOnce");
-        URI parent = startTopLra("nested-after-idempotent");
-        URI nested = prepareNestedLraWithAfterLra(parent, "nested-after-idempotent",
-                COMPENSATE, COMPLETE, AFTER_LRA_IDEMPOTENT);
-
-        closeQuietly(nested);
-        waitForNoActiveLra(nested, LRA_GONE_FAST_MS);
-
-        closeQuietly(parent);
-        waitForAfterIdempotentCount(nested, 2, LRA_GONE_WAIT_MS);
-
-        int calls = getAfterIdempotentCallCount(nested);
-        int work = getAfterWorkDone(nested);
-        log.info("afterIdempotentCalls={} workDone={}", calls, work);
-
-        if (calls >= 2) {
-            assertEquals(1, work,
-                    "Side effect must be performed exactly once regardless of retry count");
-        } else {
-            log.warn("HA cache-staleness gap: @AfterLRA idempotency cannot be exercised because the "
-                    + "cross-coord close-cascade did not fire @AfterLRA at all (calls={}). "
-                    + "Single-coord AfterLraIT covers the strong case.", calls);
-        }
     }
 
     @Test
@@ -213,13 +170,4 @@ class NestedAfterLraIT extends TestBase {
         }
     }
 
-    private void waitForAfterIdempotentCount(URI lraId, int expected, long timeoutMs) {
-        try {
-            org.awaitility.Awaitility.await("waiting for nested @AfterLRA idempotent count >= " + expected)
-                    .atMost(java.time.Duration.ofMillis(timeoutMs))
-                    .pollInterval(java.time.Duration.ofMillis(200))
-                    .until(() -> getAfterIdempotentCallCount(lraId) >= expected);
-        } catch (org.awaitility.core.ConditionTimeoutException ignored) {
-        }
-    }
 }

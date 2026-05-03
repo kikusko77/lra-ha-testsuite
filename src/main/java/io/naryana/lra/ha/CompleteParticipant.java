@@ -20,10 +20,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Participant dedicated to CompleteIT.
- * Provides all @Complete variants (sync, idempotent, async, fail, unreachable)
- * plus a @Compensate idempotent endpoint for the mutual-exclusion test, and
- * the diagnostic endpoints those tests assert on.
+ * Provides every close-callback variant along with an idempotent cancel endpoint for
+ * mutual-exclusion checks and diagnostic call counters.
  */
 @ApplicationScoped
 @Path("complete-participant")

@@ -21,31 +21,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Participant dedicated to AfterLraIT.
- *
- * <p>
- * The {@code @AfterLRA} annotation is separate from the compensate/complete
- * lifecycle: the coordinator calls the annotated PUT method once the LRA reaches
- * a terminal state ({@code Closed}, {@code Cancelled}, {@code FailedToClose},
- * {@code FailedToComplete}), passing the final {@link LRAStatus} as the entity
- * body. Per spec the coordinator MUST retry if the method returns an unexpected
- * HTTP status, so implementations must be idempotent.
- *
- * <p>
- * Endpoint variants provided:
- * <ul>
- * <li>{@code after} — records the received {@link LRAStatus} and call count; used
- * by the four terminal-state tests and HA crash tests.</li>
- * <li>{@code after-idempotent} — same as {@code after} but intentionally returns
- * 500 on the first call to trigger a coordinator retry, used by the
- * idempotency test.</li>
- * </ul>
- *
- * <p>
- * Both {@code @Complete} and {@code @Compensate} stubs are provided (sync,
- * returning 200) to support enrollment. Failing variants ({@code complete-fail},
- * {@code compensate-fail}) drive the {@code FailedToClose} / {@code FailedToCancel}
- * terminal states needed by those tests.
+ * Records the post-terminal-state notification, exposing both a happy-path endpoint and
+ * one that fails the first call so the coordinator's retry path can be exercised.
  */
 @ApplicationScoped
 @Path("after-lra-participant")
@@ -53,22 +30,11 @@ public class AfterLraParticipant {
 
     private static final Logger log = LoggerFactory.getLogger(AfterLraParticipant.class);
 
-    /** The last-seen LRAStatus per LRA (overwritten on retry — tests assert idempotent side effects). */
     private final ConcurrentHashMap<String, String> receivedStatus = new ConcurrentHashMap<>();
-
-    /** Total @AfterLRA call count per LRA (may be > 1 if coordinator retries). */
     private final ConcurrentHashMap<String, AtomicInteger> afterCallCounts = new ConcurrentHashMap<>();
-
-    /** Set of LRA ids for which @AfterLRA work was actually performed (the idempotent guard). */
     private final Set<String> afterWorkDone = ConcurrentHashMap.newKeySet();
-
-    /** Call count specifically for the idempotent after endpoint. */
     private final ConcurrentHashMap<String, AtomicInteger> afterIdempotentCounts = new ConcurrentHashMap<>();
 
-    /**
-     * Standard @AfterLRA endpoint. Records the status for every call; performs
-     * the side-effect only on the first call. Always returns 200.
-     */
     @AfterLRA
     @PUT
     @Path("after")
@@ -85,10 +51,8 @@ public class AfterLraParticipant {
     }
 
     /**
-     * Idempotency test variant: returns 500 on the first call so the coordinator
-     * retries, then 200 on subsequent calls. The idempotent guard in
-     * {@code afterWorkDone} ensures the side effect is performed exactly once
-     * regardless of how many times the coordinator calls this method.
+     * Returns a server error on the first call so the coordinator must retry, then succeeds;
+     * the participant-side guard keeps the side effect at exactly one execution.
      */
     @AfterLRA
     @PUT
@@ -145,14 +109,12 @@ public class AfterLraParticipant {
                 .build();
     }
 
-    /** Returns the last {@link LRAStatus} name received by @AfterLRA for this LRA, or "none". */
     @GET
     @Path("after-status")
     public String afterStatus(@QueryParam("lraId") String lraId) {
         return receivedStatus.getOrDefault(lraId, "none");
     }
 
-    /** Returns how many times the {@code after} endpoint was called for this LRA. */
     @GET
     @Path("after-call-count")
     public int afterCallCount(@QueryParam("lraId") String lraId) {
@@ -160,7 +122,6 @@ public class AfterLraParticipant {
         return c == null ? 0 : c.get();
     }
 
-    /** Returns how many times the {@code after-idempotent} endpoint was called for this LRA. */
     @GET
     @Path("after-idempotent-call-count")
     public int afterIdempotentCallCount(@QueryParam("lraId") String lraId) {
@@ -168,7 +129,6 @@ public class AfterLraParticipant {
         return c == null ? 0 : c.get();
     }
 
-    /** Returns 1 if the idempotent side-effect was performed for this LRA, 0 otherwise. */
     @GET
     @Path("after-work-done")
     public int afterWorkDone(@QueryParam("lraId") String lraId) {

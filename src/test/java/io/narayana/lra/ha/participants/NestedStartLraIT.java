@@ -13,6 +13,10 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Confirms that starting a nested transaction across the cluster never leaves duplicate
+ * records, even when the coordinator crashes during the start handshake.
+ */
 @QuarkusTest
 class NestedStartLraIT extends TestBase {
 

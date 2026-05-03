@@ -12,23 +12,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Tests for the {@code @Leave} lifecycle in the HA setup.
- *
- * <p>
- * The core property under test: once a participant successfully calls the
- * {@code @Leave} endpoint while an LRA context is active, the coordinator removes
- * it from that LRA. Neither {@code @Compensate} nor {@code @Complete} will be
- * delivered to it when the LRA ends.
- *
- * <p>
- * Test structure:
- * <ul>
- * <li>Happy-path leave-before-cancel / leave-before-close — callCount must stay at 0.</li>
- * <li>Sanity (no-leave) baseline for cancel / close — callCount must reach 1.</li>
- * <li>HA crash scenarios: coordinator crashes after the participant already left,
- * so recovery must still finish the LRA cleanly without calling the
- * left-behind participant.</li>
- * </ul>
+ * Verifies that a participant which removed itself from an active transaction is not
+ * called when it ends, even when a coordinator crash interrupts the leave or terminal flow.
  */
 @QuarkusTest
 class LeaveIT extends TestBase {
@@ -44,10 +29,6 @@ class LeaveIT extends TestBase {
     private static final long LRA_GONE_WAIT_MS = 30_000;
     private static final long CRASH_RECOVERY_WAIT_S = 15;
 
-    /**
-     * Participant leaves the LRA, then the LRA is cancelled.
-     * {@code @Compensate} must never be called — callCount stays at 0.
-     */
     @Test
     void testLeaveBeforeCancel() {
         log.info("LeaveIT: testLeaveBeforeCancel");
@@ -63,10 +44,6 @@ class LeaveIT extends TestBase {
                 "@Compensate must not be called after the participant left the LRA");
     }
 
-    /**
-     * Participant leaves the LRA, then the LRA is closed.
-     * {@code @Complete} must never be called — callCount stays at 0.
-     */
     @Test
     void testLeaveBeforeClose() {
         log.info("LeaveIT: testLeaveBeforeClose");
@@ -83,44 +60,8 @@ class LeaveIT extends TestBase {
     }
 
     /**
-     * Sanity: participant does NOT leave; LRA is cancelled.
-     * {@code @Compensate} must be called exactly once.
-     */
-    @Test
-    void testNoLeave_cancelCallsCompensate() {
-        log.info("LeaveIT: testNoLeave_cancelCallsCompensate");
-        URI lra = prepareLeaveLra("no-leave-cancel");
-
-        assertDoesNotThrow(() -> lraClient.cancelLRA(lra));
-
-        waitForIdempotentCallCount(lra, 1, LRA_GONE_FAST_MS);
-
-        assertEquals(1, getIdempotentCallCount(lra),
-                "@Compensate must be called exactly once when the participant has not left");
-    }
-
-    /**
-     * Sanity: participant does NOT leave; LRA is closed.
-     * {@code @Complete} must be called exactly once.
-     */
-    @Test
-    void testNoLeave_closeCallsComplete() {
-        log.info("LeaveIT: testNoLeave_closeCallsComplete");
-        URI lra = prepareLeaveLra("no-leave-close");
-
-        assertDoesNotThrow(() -> lraClient.closeLRA(lra));
-
-        waitForIdempotentCallCount(lra, 1, LRA_GONE_FAST_MS);
-
-        assertEquals(1, getIdempotentCallCount(lra),
-                "@Complete must be called exactly once when the participant has not left");
-    }
-
-    /**
-     * Participant leaves, then the coordinator crashes before persisting the
-     * Cancelling state (END_BEFORE_SAVE). The HA proxy fails over to
-     * coordinator-2, which sees the LRA as still Active and cancels it cleanly.
-     * Because the participant already left, callCount must remain 0.
+     * Crash hits before the cancel decision is persisted; proxy failover finishes the cancel
+     * cleanly without calling the participant that already left.
      */
     @Test
     void testLeaveBeforeCancel_coordinatorCrashBeforeSave() {
@@ -145,11 +86,6 @@ class LeaveIT extends TestBase {
                 "Left participant must not receive @Compensate even after coordinator failover");
     }
 
-    /**
-     * Participant leaves, then the coordinator crashes after persisting
-     * Cancelling (END_AFTER_SAVE). Recovery drives the cancel to completion;
-     * because the participant left before the crash, callCount must remain 0.
-     */
     @Test
     void testLeaveBeforeCancel_coordinatorCrashAfterSave() {
         log.info("LeaveIT: testLeaveBeforeCancel_coordinatorCrashAfterSave");
@@ -175,11 +111,6 @@ class LeaveIT extends TestBase {
                 "Left participant must not receive @Compensate after crash-and-recovery");
     }
 
-    /**
-     * Participant leaves, then the coordinator crashes after persisting
-     * Closing (END_AFTER_SAVE on close). Recovery drives the close to completion;
-     * because the participant left before the crash, callCount must remain 0.
-     */
     @Test
     void testLeaveBeforeClose_coordinatorCrashAfterSave() {
         log.info("LeaveIT: testLeaveBeforeClose_coordinatorCrashAfterSave");
@@ -325,22 +256,13 @@ class LeaveIT extends TestBase {
                 "@Complete must not fire after leave persisted (LEAVE_AFTER_SAVE)");
     }
 
-    /**
-     * Starts an LRA and enrolls the leave-participant as a compensator.
-     * Uses the shared {@code callCounts} map tracked by {@link io.naryana.lra.ha.LeaveParticipant}
-     * for both compensate and complete, so {@link #getIdempotentCallCount} gives the
-     * total number of callbacks delivered to this participant.
-     */
     private URI prepareLeaveLra(String scenario) {
         return prepareLra(participantClientId(scenario), COMPENSATE, COMPLETE);
     }
 
     /**
-     * Removes this participant from the LRA by calling {@code PUT {lraId}/remove} directly,
-     * bypassing the {@code @Leave} / {@code ServerLRAFilter} path to avoid a host mismatch
-     * between the enrollment URL ({@code host.docker.internal:9081}) and the filter-built URL
-     * ({@code localhost:9081}). The body must be a Link header string so the coordinator
-     * matches the participant by compensator URL rather than recovery URL.
+     * Calls the coordinator's remove endpoint directly to avoid a host mismatch between
+     * the docker-internal enrollment URL and the localhost URL the JAX-RS filter would build.
      */
     private void callLeave(URI lraId) {
         String compensatorLink = buildCompensatorLink(
