@@ -7,9 +7,8 @@ import io.quarkus.test.junit.QuarkusTest;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.Response;
 import java.net.URI;
+import org.jboss.logging.Logger;
 import org.junit.jupiter.api.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Verifies that a participant which removed itself from an active transaction is not
@@ -23,7 +22,7 @@ class LeaveIT extends TestBase {
         return "leave-participant";
     }
 
-    private static final Logger log = LoggerFactory.getLogger(LeaveIT.class);
+    private static final Logger log = Logger.getLogger(LeaveIT.class);
 
     private static final long LRA_GONE_FAST_MS = 10_000;
     private static final long LRA_GONE_WAIT_MS = 30_000;
@@ -75,7 +74,7 @@ class LeaveIT extends TestBase {
         try {
             lraClient.cancelLRA(lra);
         } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.info("cancelLRA returned {} — coordinator crashed, proxy fails over",
+            log.infof("cancelLRA returned %s — coordinator crashed, proxy fails over",
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
@@ -100,7 +99,7 @@ class LeaveIT extends TestBase {
         } catch (jakarta.ws.rs.NotFoundException e) {
             log.info("cancelLRA returned 404, treating as already processed");
         } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.info("cancelLRA returned {} — coordinator crashed as expected",
+            log.infof("cancelLRA returned %s — coordinator crashed as expected",
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
@@ -125,7 +124,7 @@ class LeaveIT extends TestBase {
         } catch (jakarta.ws.rs.NotFoundException e) {
             log.info("closeLRA returned 404, treating as already processed");
         } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.info("closeLRA returned {} — coordinator crashed as expected",
+            log.infof("closeLRA returned %s — coordinator crashed as expected",
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
@@ -148,7 +147,7 @@ class LeaveIT extends TestBase {
         try {
             lraClient.leaveLRA(lra, compensatorLink);
         } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.info("leaveLRA returned {} after retry exhaustion",
+            log.infof("leaveLRA returned %s after retry exhaustion",
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
@@ -178,7 +177,7 @@ class LeaveIT extends TestBase {
         try {
             lraClient.leaveLRA(lra, compensatorLink);
         } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.info("leaveLRA returned {} after retry exhaustion",
+            log.infof("leaveLRA returned %s after retry exhaustion",
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
@@ -208,7 +207,7 @@ class LeaveIT extends TestBase {
         try {
             lraClient.leaveLRA(lra, compensatorLink);
         } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.info("leaveLRA returned {} after retry exhaustion",
+            log.infof("leaveLRA returned %s after retry exhaustion",
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
@@ -238,7 +237,7 @@ class LeaveIT extends TestBase {
         try {
             lraClient.leaveLRA(lra, compensatorLink);
         } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.info("leaveLRA returned {} after retry exhaustion",
+            log.infof("leaveLRA returned %s after retry exhaustion",
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
@@ -275,7 +274,7 @@ class LeaveIT extends TestBase {
                 .put(Entity.text(compensatorLink));
         int status = r.getStatus();
         r.close();
-        log.info("LEAVE call for lraId={} returned HTTP {}", lraId, status);
+        log.infof("LEAVE call for lraId=%s returned HTTP %s", lraId, status);
         assertEquals(200, status, "Leave endpoint must return 200; got " + status);
     }
 }

@@ -8,14 +8,13 @@ import io.quarkus.test.junit.QuarkusTest;
 import java.net.URI;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import org.jboss.logging.Logger;
 import org.junit.jupiter.api.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 @QuarkusTest
 class JoinLraIT extends TestBase {
 
-    private static final Logger log = LoggerFactory.getLogger(JoinLraIT.class);
+    private static final Logger log = Logger.getLogger(JoinLraIT.class);
 
     @TestHTTPResource("/")
     URI baseUri;
@@ -33,19 +32,19 @@ class JoinLraIT extends TestBase {
                 true);
 
         lrasToAfterFinish.add(lra);
-        log.info("Started LRA: {}", lra);
+        log.infof("Started LRA: %s", lra);
 
         URI compensateUri = participantUri("compensate");
         URI completeUri = participantUri("complete");
 
         URI injectedCoordinator = nextRoutedCoordinator();
-        log.info("Injecting JOIN_AFTER_SAVE on coordinator {}", injectedCoordinator);
+        log.infof("Injecting JOIN_AFTER_SAVE on coordinator %s", injectedCoordinator);
         enableFailurePoint(injectedCoordinator, InjectPoint.JOIN_AFTER_SAVE.name());
         log.info("Injected join hold, calling joinLRA again (same participant, will timeout+retry)");
 
         URI recoveryUrl = lraClient.joinLRA(lra, 30L, compensateUri, completeUri,
                 null, null, null, null, new StringBuilder());
-        log.info("joinLRA recoveryUrl: {}", recoveryUrl);
+        log.infof("joinLRA recoveryUrl: %s", recoveryUrl);
         assertNotNull(recoveryUrl);
 
         List<String> activeIds = getActiveIds();
@@ -70,22 +69,22 @@ class JoinLraIT extends TestBase {
                 ChronoUnit.SECONDS,
                 true);
 
-        log.info("Started LRA: {}", lra);
+        log.infof("Started LRA: %s", lra);
 
         URI compensateUri = participantUri("compensate");
         URI completeUri = participantUri("complete");
 
         URI injectedCoordinator = nextRoutedCoordinator();
-        log.info("Injecting JOIN_BEFORE_SAVE on coordinator {}", injectedCoordinator);
+        log.infof("Injecting JOIN_BEFORE_SAVE on coordinator %s", injectedCoordinator);
         enableFailurePoint(injectedCoordinator, InjectPoint.JOIN_BEFORE_SAVE.name());
 
         URI recoveryUrl = lraClient.joinLRA(lra, 30L, compensateUri, completeUri,
                 null, null, null, null, new StringBuilder());
         assertNotNull(recoveryUrl);
-        log.info("RecoveryUrl after failover: {}", recoveryUrl);
+        log.infof("RecoveryUrl after failover: %s", recoveryUrl);
 
         List<String> all = getActiveIds();
-        log.info("Active ids across cluster (raw): {}", all);
+        log.infof("Active ids across cluster (raw): %s", all);
 
         long unique = all.size();
 

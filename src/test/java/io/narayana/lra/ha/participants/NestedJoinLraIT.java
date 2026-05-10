@@ -8,9 +8,8 @@ import io.quarkus.test.junit.QuarkusTest;
 import java.net.URI;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.jboss.logging.Logger;
 import org.junit.jupiter.api.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Confirms that a participant joining a nested transaction does not leave duplicate or
@@ -24,7 +23,7 @@ class NestedJoinLraIT extends TestBase {
         return "nested-participant";
     }
 
-    private static final Logger log = LoggerFactory.getLogger(NestedJoinLraIT.class);
+    private static final Logger log = Logger.getLogger(NestedJoinLraIT.class);
 
     @Test
     void testJoinNestedLraDuplicates_crashAtJoinAfterSave() {
@@ -38,16 +37,16 @@ class NestedJoinLraIT extends TestBase {
         URI completeUri = participantUri(COMPLETE);
 
         URI injected = nextRoutedCoordinator();
-        log.info("Injecting JOIN_AFTER_SAVE on coordinator {}", injected);
+        log.infof("Injecting JOIN_AFTER_SAVE on coordinator %s", injected);
         enableFailurePoint(injected, InjectPoint.JOIN_AFTER_SAVE.name());
 
         URI recoveryUrl = lraClient.joinLRA(nested, 30L, compensateUri, completeUri,
                 null, null, null, null, new StringBuilder());
-        log.info("nested joinLRA recoveryUrl: {}", recoveryUrl);
+        log.infof("nested joinLRA recoveryUrl: %s", recoveryUrl);
         assertNotNull(recoveryUrl);
 
         List<String> uids = uniqueUids(getAllActiveIdsAcrossCoordinators());
-        log.info("Cluster-wide unique active uids after JOIN_AFTER_SAVE crash: {}", uids);
+        log.infof("Cluster-wide unique active uids after JOIN_AFTER_SAVE crash: %s", uids);
         assertTrue(uids.contains(LRAConstants.getLRAUid(parent)),
                 "Parent LRA must remain active after JOIN_AFTER_SAVE crash, uids=" + uids);
         assertTrue(uids.contains(LRAConstants.getLRAUid(nested)),
@@ -66,7 +65,7 @@ class NestedJoinLraIT extends TestBase {
         URI completeUri = participantUri(COMPLETE);
 
         URI injected = nextRoutedCoordinator();
-        log.info("Injecting JOIN_BEFORE_SAVE on coordinator {}", injected);
+        log.infof("Injecting JOIN_BEFORE_SAVE on coordinator %s", injected);
         enableFailurePoint(injected, InjectPoint.JOIN_BEFORE_SAVE.name());
 
         URI recoveryUrl = lraClient.joinLRA(nested, 30L, compensateUri, completeUri,
@@ -74,7 +73,7 @@ class NestedJoinLraIT extends TestBase {
         assertNotNull(recoveryUrl);
 
         List<String> uids = uniqueUids(getAllActiveIdsAcrossCoordinators());
-        log.info("Cluster-wide unique active uids after JOIN_BEFORE_SAVE crash: {}", uids);
+        log.infof("Cluster-wide unique active uids after JOIN_BEFORE_SAVE crash: %s", uids);
         assertTrue(uids.contains(LRAConstants.getLRAUid(parent)),
                 "Parent LRA must remain active after JOIN_BEFORE_SAVE crash, uids=" + uids);
         assertTrue(uids.contains(LRAConstants.getLRAUid(nested)),

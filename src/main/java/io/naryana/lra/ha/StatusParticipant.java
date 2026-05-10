@@ -16,8 +16,7 @@ import org.eclipse.microprofile.lra.annotation.Complete;
 import org.eclipse.microprofile.lra.annotation.ParticipantStatus;
 import org.eclipse.microprofile.lra.annotation.Status;
 import org.eclipse.microprofile.lra.annotation.ws.rs.LRA;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.jboss.logging.Logger;
 
 /**
  * Exposes the asynchronous status-polling variants the dedicated polling suite needs:
@@ -27,7 +26,7 @@ import org.slf4j.LoggerFactory;
 @Path("status-participant")
 public class StatusParticipant {
 
-    private static final Logger log = LoggerFactory.getLogger(StatusParticipant.class);
+    private static final Logger log = Logger.getLogger(StatusParticipant.class);
 
     // Tracks whether async compensate / complete was ever called for an LRA
     private final Set<String> asyncCompensateCalled = ConcurrentHashMap.newKeySet();
@@ -52,7 +51,7 @@ public class StatusParticipant {
         String uid = lraId.toASCIIString();
         int n = asyncCompensateCallCounts.computeIfAbsent(uid, k -> new AtomicInteger()).incrementAndGet();
         asyncCompensateCalled.add(uid);
-        log.info("COMPENSATE-ASYNC lraId={} call#{}", lraId, n);
+        log.infof("COMPENSATE-ASYNC lraId=%s call#%s", lraId, n);
         return Response.accepted().build();
     }
 
@@ -63,7 +62,7 @@ public class StatusParticipant {
         String uid = lraId.toASCIIString();
         int n = asyncCompleteCallCounts.computeIfAbsent(uid, k -> new AtomicInteger()).incrementAndGet();
         asyncCompleteCalled.add(uid);
-        log.info("COMPLETE-ASYNC lraId={} call#{}", lraId, n);
+        log.infof("COMPLETE-ASYNC lraId=%s call#%s", lraId, n);
         return Response.accepted().build();
     }
 
@@ -74,7 +73,7 @@ public class StatusParticipant {
         String uid = lraId.toASCIIString();
         int n = statusGoneCallCounts.computeIfAbsent(uid, k -> new AtomicInteger()).incrementAndGet();
         boolean called = asyncCompensateCalled.contains(uid) || asyncCompleteCalled.contains(uid);
-        log.info("STATUS-GONE lraId={} call#{} asyncCalled={}", lraId, n, called);
+        log.infof("STATUS-GONE lraId=%s call#%s asyncCalled=%s", lraId, n, called);
         if (called) {
             // 410 = "I already acted, I no longer remember this LRA"
             return Response.status(Response.Status.GONE).build();
@@ -98,7 +97,7 @@ public class StatusParticipant {
             int postN = postAsyncCompensateStatusCalls.computeIfAbsent(uid, k -> new AtomicInteger()).incrementAndGet();
             ps = postN == 1 ? ParticipantStatus.Compensating : ParticipantStatus.Compensated;
         }
-        log.info("STATUS-INTERMEDIATE-COMPENSATE lraId={} call#{} → {}", lraId, n, ps);
+        log.infof("STATUS-INTERMEDIATE-COMPENSATE lraId=%s call#%s → %s", lraId, n, ps);
         return Response.ok(ps.name()).build();
     }
 
@@ -118,7 +117,7 @@ public class StatusParticipant {
             int postN = postAsyncCompleteStatusCalls.computeIfAbsent(uid, k -> new AtomicInteger()).incrementAndGet();
             ps = postN == 1 ? ParticipantStatus.Completing : ParticipantStatus.Completed;
         }
-        log.info("STATUS-INTERMEDIATE-COMPLETE lraId={} call#{} → {}", lraId, n, ps);
+        log.infof("STATUS-INTERMEDIATE-COMPLETE lraId=%s call#%s → %s", lraId, n, ps);
         return Response.ok(ps.name()).build();
     }
 
@@ -126,7 +125,7 @@ public class StatusParticipant {
     @PUT
     @Path("compensate")
     public Response compensate(@HeaderParam(LRA.LRA_HTTP_CONTEXT_HEADER) URI lraId) {
-        log.info("COMPENSATE lraId={}", lraId);
+        log.infof("COMPENSATE lraId=%s", lraId);
         return Response.ok(ParticipantStatus.Compensated.name()).build();
     }
 
@@ -134,7 +133,7 @@ public class StatusParticipant {
     @PUT
     @Path("complete")
     public Response complete(@HeaderParam(LRA.LRA_HTTP_CONTEXT_HEADER) URI lraId) {
-        log.info("COMPLETE lraId={}", lraId);
+        log.infof("COMPLETE lraId=%s", lraId);
         return Response.ok(ParticipantStatus.Completed.name()).build();
     }
 

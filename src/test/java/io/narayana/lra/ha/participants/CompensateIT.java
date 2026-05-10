@@ -7,9 +7,8 @@ import io.narayana.lra.LRAConstants;
 import io.quarkus.test.junit.QuarkusTest;
 import java.net.URI;
 import java.util.List;
+import org.jboss.logging.Logger;
 import org.junit.jupiter.api.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Exercises the cancellation callback across synchronous, asynchronous and crash-recovery paths
@@ -23,7 +22,7 @@ class CompensateIT extends TestBase {
         return "compensate-participant";
     }
 
-    private static final Logger log = LoggerFactory.getLogger(CompensateIT.class);
+    private static final Logger log = Logger.getLogger(CompensateIT.class);
 
     private static final long CRASH_RECOVERY_WAIT_S = 15;
     private static final long LRA_GONE_WAIT_MS = 30_000;
@@ -44,7 +43,7 @@ class CompensateIT extends TestBase {
         try {
             lraClient.cancelLRA(lra);
         } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.info("cancelLRA returned {} (coordinator crashed), proceeding to recovery check",
+            log.infof("cancelLRA returned %s (coordinator crashed), proceeding to recovery check",
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
@@ -54,7 +53,7 @@ class CompensateIT extends TestBase {
         int callCount = getIdempotentCallCount(lra);
         int workDone = getIdempotentWorkDone(lra);
 
-        log.info("After crash recovery: callCount={}, workDone={}", callCount, workDone);
+        log.infof("After crash recovery: callCount=%s, workDone=%s", callCount, workDone);
 
         // callCount is >= 1: called at least once before the crash. May be 2 if the
         // crash happened before Arjuna could persist FINISH_OK (timing-dependent).
@@ -75,7 +74,7 @@ class CompensateIT extends TestBase {
         } catch (jakarta.ws.rs.NotFoundException e) {
             log.info("cancelLRA returned 404, treating as already processed");
         } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.info("cancelLRA returned {}, coordinator crashed as expected",
+            log.infof("cancelLRA returned %s, coordinator crashed as expected",
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
@@ -100,7 +99,7 @@ class CompensateIT extends TestBase {
         try {
             lraClient.cancelLRA(lra);
         } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.info("cancelLRA returned {} (coordinator crashed), LRA will be cancelled by timeout on recovery",
+            log.infof("cancelLRA returned %s (coordinator crashed), LRA will be cancelled by timeout on recovery",
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
@@ -124,7 +123,7 @@ class CompensateIT extends TestBase {
         try {
             lraClient.cancelLRA(lra);
         } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.info("cancelLRA returned {}, coordinator crashed",
+            log.infof("cancelLRA returned %s, coordinator crashed",
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
@@ -150,7 +149,7 @@ class CompensateIT extends TestBase {
         try {
             lraClient.cancelLRA(lra);
         } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.info("cancelLRA returned {} — coordinator crashed after 202, proxy will failover to coordinator-2",
+            log.infof("cancelLRA returned %s — coordinator crashed after 202, proxy will failover to coordinator-2",
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
@@ -161,7 +160,7 @@ class CompensateIT extends TestBase {
         int compensateCalls = getAsyncCallCount(lra);
         int statusCalls = getAsyncStatusCallCount(lra);
 
-        log.info("After async proxy failover: compensateCalls={}, statusCalls={}", compensateCalls, statusCalls);
+        log.infof("After async proxy failover: compensateCalls=%s, statusCalls=%s", compensateCalls, statusCalls);
 
         assertEquals(1, compensateCalls,
                 "Async @Compensate should be called exactly once in END_DURING_CLEANUP failover");
@@ -188,7 +187,7 @@ class CompensateIT extends TestBase {
         try {
             lraClient.cancelLRA(lra);
         } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.info("cancelLRA returned {} — coordinator crashed after receiving participant 202",
+            log.infof("cancelLRA returned %s — coordinator crashed after receiving participant 202",
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
@@ -199,7 +198,7 @@ class CompensateIT extends TestBase {
         int compensateCalls = getAsyncCallCount(lra);
         int statusCalls = getAsyncStatusCallCount(lra);
 
-        log.info("After async crash recovery: compensateCalls={}, statusCalls={}", compensateCalls, statusCalls);
+        log.infof("After async crash recovery: compensateCalls=%s, statusCalls=%s", compensateCalls, statusCalls);
 
         assertEquals(1, compensateCalls,
                 "Async @Compensate should not be replayed after END_AFTER_PARTICIPANT_RESPONSE; got "
@@ -223,8 +222,8 @@ class CompensateIT extends TestBase {
         try {
             lraClient.cancelLRA(lra);
         } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.info(
-                    "cancelLRA returned {} — coordinator crashed after receiving participant 200 but before persisting FINISH_OK",
+            log.infof(
+                    "cancelLRA returned %s — coordinator crashed after receiving participant 200 but before persisting FINISH_OK",
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
@@ -234,7 +233,7 @@ class CompensateIT extends TestBase {
         int callCount = getIdempotentCallCount(lra);
         int workDone = getIdempotentWorkDone(lra);
 
-        log.info("After crash recovery: callCount={}, workDone={}", callCount, workDone);
+        log.infof("After crash recovery: callCount=%s, workDone=%s", callCount, workDone);
 
         assertTrue(callCount >= 1,
                 "Compensate must be called at least once before the LRA resolves, got " + callCount);
@@ -254,7 +253,7 @@ class CompensateIT extends TestBase {
         try {
             lraClient.cancelLRA(lra);
         } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.info("cancelLRA returned {} (503 from participant — coordinator queues for recovery scan)",
+            log.infof("cancelLRA returned %s (503 from participant — coordinator queues for recovery scan)",
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
         waitForNoActiveLra(lra, RECOVERY_SCAN_WAIT_MS);
@@ -269,7 +268,7 @@ class CompensateIT extends TestBase {
         try {
             lraClient.cancelLRA(lra);
         } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.info("cancelLRA returned {} for fail scenario",
+            log.infof("cancelLRA returned %s for fail scenario",
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 

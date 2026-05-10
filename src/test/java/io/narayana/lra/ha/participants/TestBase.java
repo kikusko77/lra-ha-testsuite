@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.narayana.lra.LRAConstants;
 import io.narayana.lra.client.NarayanaLRAClient;
 import io.narayana.lra.ha.proxy.CoordinatorProxyResource;
+import io.quarkus.narayana.lra.runtime.LRAConfiguration;
 import io.quarkus.test.common.QuarkusTestResource;
 import jakarta.enterprise.context.control.ActivateRequestContext;
 import jakarta.inject.Inject;
@@ -22,18 +23,18 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionTimeoutException;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.jboss.logging.Logger;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.TestInstance;
-import org.slf4j.LoggerFactory;
 
 @QuarkusTestResource(CoordinatorProxyResource.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public abstract class TestBase implements ParticipantEndpoints {
 
+    private static final Logger LOG = Logger.getLogger(TestBase.class);
     private static final ObjectMapper JSON = new ObjectMapper();
 
     @Inject
@@ -45,8 +46,7 @@ public abstract class TestBase implements ParticipantEndpoints {
     protected List<URI> coordinatorUris;
 
     @Inject
-    @ConfigProperty(name = "narayana.lra.base-uri")
-    String participantBaseUri;
+    LRAConfiguration lraConfig;
 
     @AfterAll
     @ActivateRequestContext
@@ -71,11 +71,11 @@ public abstract class TestBase implements ParticipantEndpoints {
         for (URI lraToFinish : lrasToAfterFinish) {
             try {
                 lraClient.cancelLRA(lraToFinish);
-                LoggerFactory.getLogger(getClass()).info("Cleanup request completed for {}", lraToFinish);
+                LOG.infof("Cleanup request completed for %s", lraToFinish);
             } catch (jakarta.ws.rs.NotFoundException e) {
-                LoggerFactory.getLogger(getClass()).info("Cleanup skipped, already gone: {}", lraToFinish);
+                LOG.infof("Cleanup skipped, already gone: %s", lraToFinish);
             } catch (Exception e) {
-                LoggerFactory.getLogger(getClass()).error("Cleanup failed for {}", lraToFinish, e);
+                LOG.errorf("Cleanup failed for %s", lraToFinish, e);
             }
         }
         if (client != null) {
@@ -88,7 +88,10 @@ public abstract class TestBase implements ParticipantEndpoints {
     }
 
     protected URI participantUri(String endpoint) {
-        return UriBuilder.fromUri(participantBaseUri)
+        String baseUri = lraConfig.baseUri()
+                .orElseThrow(() -> new IllegalStateException(
+                        "quarkus.lra.base-uri must be set for the test participant callbacks"));
+        return UriBuilder.fromUri(baseUri)
                 .path(participantPath())
                 .path(endpoint)
                 .build();
@@ -112,7 +115,7 @@ public abstract class TestBase implements ParticipantEndpoints {
                     });
                 }
             } catch (Exception e) {
-                LoggerFactory.getLogger(getClass()).info("Coordinator {} unreachable (possibly crashed)", base);
+                LOG.infof("Coordinator %s unreachable (possibly crashed)", base);
             } finally {
                 if (r != null)
                     r.close();
@@ -218,8 +221,7 @@ public abstract class TestBase implements ParticipantEndpoints {
         if (reachable != null) {
             return reachable;
         }
-        LoggerFactory.getLogger(getClass())
-                .warn("All coordinators unreachable; waiting up to {} s for one to recover...", atMostSeconds);
+        LOG.warnf("All coordinators unreachable; waiting up to %s s for one to recover...", atMostSeconds);
         return waitForAnyCoordinator(atMostSeconds);
     }
 
@@ -368,9 +370,8 @@ public abstract class TestBase implements ParticipantEndpoints {
         URI recovery = lraClient.joinLRA(lra, 30L, compensate, complete, forget, null, null, status,
                 new StringBuilder());
 
-        LoggerFactory.getLogger(getClass())
-                .info("Enrolled compensate={}, complete={}, forget={}, status={}, recoveryUrl={}",
-                        compensate, complete, forget, status, recovery);
+        LOG.infof("Enrolled compensate=%s, complete=%s, forget=%s, status=%s, recoveryUrl=%s",
+                compensate, complete, forget, status, recovery);
         return lra;
     }
 
@@ -414,7 +415,7 @@ public abstract class TestBase implements ParticipantEndpoints {
 
     protected URI startLra(URI parentLRA, String clientIdPrefix) {
         URI lra = lraClient.startLRA(parentLRA, clientIdPrefix + "-" + System.nanoTime(), 30L, ChronoUnit.SECONDS, true);
-        LoggerFactory.getLogger(getClass()).info("Started LRA: {}", lra);
+        LOG.infof("Started LRA: %s", lra);
         return lra;
     }
 
@@ -538,9 +539,8 @@ public abstract class TestBase implements ParticipantEndpoints {
         URI recovery = lraClient.joinLRA(lra, 30L, compensate, complete, null, null, after, null,
                 new StringBuilder());
 
-        LoggerFactory.getLogger(getClass())
-                .info("Enrolled compensate={}, complete={}, after={}, recoveryUrl={}",
-                        compensate, complete, after, recovery);
+        LOG.infof("Enrolled compensate=%s, complete=%s, after=%s, recoveryUrl=%s",
+                compensate, complete, after, recovery);
         return lra;
     }
 
@@ -604,9 +604,8 @@ public abstract class TestBase implements ParticipantEndpoints {
         URI recovery = lraClient.joinLRA(nested, 30L, compensate, complete, null, null, after, null,
                 new StringBuilder());
 
-        LoggerFactory.getLogger(getClass())
-                .info("Enrolled NESTED compensate={}, complete={}, after={}, parent={}, nested={}, recoveryUrl={}",
-                        compensate, complete, after, parent, nested, recovery);
+        LOG.infof("Enrolled NESTED compensate=%s, complete=%s, after=%s, parent=%s, nested=%s, recoveryUrl=%s",
+                compensate, complete, after, parent, nested, recovery);
         return nested;
     }
 }

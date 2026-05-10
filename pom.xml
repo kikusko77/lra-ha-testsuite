@@ -75,6 +75,12 @@
     </dependency>
 
     <dependency>
+      <groupId>org.jboss.narayana.lra</groupId>
+      <artifactId>lra-coordinator-proxy</artifactId>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
       <groupId>org.testcontainers</groupId>
       <artifactId>junit-jupiter</artifactId>
       <version>1.21.3</version>

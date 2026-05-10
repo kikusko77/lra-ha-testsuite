@@ -8,9 +8,8 @@ import io.narayana.lra.LRAConstants;
 import io.quarkus.test.junit.QuarkusTest;
 import java.net.URI;
 import java.util.List;
+import org.jboss.logging.Logger;
 import org.junit.jupiter.api.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Exercises the close callback across synchronous, asynchronous and crash-recovery paths
@@ -24,7 +23,7 @@ class CompleteIT extends TestBase {
         return "complete-participant";
     }
 
-    private static final Logger log = LoggerFactory.getLogger(CompleteIT.class);
+    private static final Logger log = Logger.getLogger(CompleteIT.class);
 
     private static final long CRASH_RECOVERY_WAIT_S = 15;
     private static final long LRA_GONE_WAIT_MS = 30_000;
@@ -45,7 +44,7 @@ class CompleteIT extends TestBase {
         try {
             lraClient.closeLRA(lra);
         } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.info("closeLRA returned {} (coordinator crashed), proceeding to recovery check",
+            log.infof("closeLRA returned %s (coordinator crashed), proceeding to recovery check",
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
@@ -55,7 +54,7 @@ class CompleteIT extends TestBase {
         int callCount = getIdempotentCallCount(lra);
         int workDone = getIdempotentWorkDone(lra);
 
-        log.info("After crash recovery: callCount={}, workDone={}", callCount, workDone);
+        log.infof("After crash recovery: callCount=%s, workDone=%s", callCount, workDone);
 
         assertTrue(callCount >= 1, "Complete must have been called at least once, got " + callCount);
         assertEquals(1, workDone, "Side effect must be performed exactly once regardless of retry count");
@@ -73,7 +72,7 @@ class CompleteIT extends TestBase {
         } catch (jakarta.ws.rs.NotFoundException e) {
             log.info("closeLRA returned 404, treating as already processed");
         } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.info("closeLRA returned {}, coordinator crashed as expected",
+            log.infof("closeLRA returned %s, coordinator crashed as expected",
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
@@ -98,7 +97,7 @@ class CompleteIT extends TestBase {
         try {
             lraClient.closeLRA(lra);
         } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.info("closeLRA returned {} — coordinator-1 crashed, proxy fails over to coordinator-2",
+            log.infof("closeLRA returned %s — coordinator-1 crashed, proxy fails over to coordinator-2",
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
@@ -124,8 +123,8 @@ class CompleteIT extends TestBase {
         try {
             lraClient.closeLRA(lra);
         } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.info(
-                    "closeLRA returned {} — coordinator crashed after receiving participant 200 but before persisting FINISH_OK",
+            log.infof(
+                    "closeLRA returned %s — coordinator crashed after receiving participant 200 but before persisting FINISH_OK",
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
@@ -135,7 +134,7 @@ class CompleteIT extends TestBase {
         int callCount = getIdempotentCallCount(lra);
         int workDone = getIdempotentWorkDone(lra);
 
-        log.info("After crash recovery: callCount={}, workDone={}", callCount, workDone);
+        log.infof("After crash recovery: callCount=%s, workDone=%s", callCount, workDone);
 
         assertTrue(callCount >= 1,
                 "Complete must be called at least once before the LRA resolves, got " + callCount);
@@ -156,7 +155,7 @@ class CompleteIT extends TestBase {
         try {
             lraClient.closeLRA(lra);
         } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.info("closeLRA returned {}, coordinator crashed",
+            log.infof("closeLRA returned %s, coordinator crashed",
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
@@ -182,7 +181,7 @@ class CompleteIT extends TestBase {
         try {
             lraClient.closeLRA(lra);
         } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.info("closeLRA returned {} — coordinator crashed after 202, proxy will failover to coordinator-2",
+            log.infof("closeLRA returned %s — coordinator crashed after 202, proxy will failover to coordinator-2",
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
@@ -193,7 +192,7 @@ class CompleteIT extends TestBase {
         int completeCalls = getAsyncCallCount(lra);
         int statusCalls = getAsyncStatusCallCount(lra);
 
-        log.info("After async proxy failover: completeCalls={}, statusCalls={}", completeCalls, statusCalls);
+        log.infof("After async proxy failover: completeCalls=%s, statusCalls=%s", completeCalls, statusCalls);
 
         assertEquals(1, completeCalls,
                 "Async @Complete should be called exactly once in END_DURING_CLEANUP failover");
@@ -220,7 +219,7 @@ class CompleteIT extends TestBase {
         try {
             lraClient.closeLRA(lra);
         } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.info("closeLRA returned {} — coordinator crashed after receiving participant 202",
+            log.infof("closeLRA returned %s — coordinator crashed after receiving participant 202",
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
@@ -231,7 +230,7 @@ class CompleteIT extends TestBase {
         int completeCalls = getAsyncCallCount(lra);
         int statusCalls = getAsyncStatusCallCount(lra);
 
-        log.info("After async crash recovery: completeCalls={}, statusCalls={}", completeCalls, statusCalls);
+        log.infof("After async crash recovery: completeCalls=%s, statusCalls=%s", completeCalls, statusCalls);
 
         assertEquals(1, completeCalls,
                 "Async @Complete should not be replayed after END_AFTER_PARTICIPANT_RESPONSE; got "
@@ -253,7 +252,7 @@ class CompleteIT extends TestBase {
         try {
             lraClient.closeLRA(lra);
         } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.info("closeLRA returned {} (503 from participant — coordinator queues for recovery scan)",
+            log.infof("closeLRA returned %s (503 from participant — coordinator queues for recovery scan)",
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
         waitForNoActiveLra(lra, RECOVERY_SCAN_WAIT_MS);
@@ -268,7 +267,7 @@ class CompleteIT extends TestBase {
         try {
             lraClient.closeLRA(lra);
         } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.info("closeLRA returned {} for fail scenario",
+            log.infof("closeLRA returned %s for fail scenario",
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 

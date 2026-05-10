@@ -9,9 +9,8 @@ import java.net.URI;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.jboss.logging.Logger;
 import org.junit.jupiter.api.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Confirms that starting a nested transaction across the cluster never leaves duplicate
@@ -25,7 +24,7 @@ class NestedStartLraIT extends TestBase {
         return "nested-participant";
     }
 
-    private static final Logger log = LoggerFactory.getLogger(NestedStartLraIT.class);
+    private static final Logger log = Logger.getLogger(NestedStartLraIT.class);
 
     @Test
     void testStartNestedLraDuplicates() {
@@ -47,7 +46,7 @@ class NestedStartLraIT extends TestBase {
                 "Nested LRA must be distinct from its parent");
 
         List<String> uids = uniqueUids(getAllActiveIdsAcrossCoordinators());
-        log.info("Cluster-wide unique active uids after nested-start with crash: {}", uids);
+        log.infof("Cluster-wide unique active uids after nested-start with crash: %s", uids);
         assertTrue(uids.contains(LRAConstants.getLRAUid(parent)),
                 "Parent LRA uid must be active after crash recovery, uids=" + uids);
         assertTrue(uids.contains(LRAConstants.getLRAUid(nested)),

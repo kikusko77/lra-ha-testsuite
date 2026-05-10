@@ -5,9 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.quarkus.test.junit.QuarkusTest;
 import java.net.URI;
+import org.jboss.logging.Logger;
 import org.junit.jupiter.api.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Verifies that the cleanup callback fires after a failed terminal outcome on a nested
@@ -21,7 +20,7 @@ class NestedForgetIT extends TestBase {
         return "nested-participant";
     }
 
-    private static final Logger log = LoggerFactory.getLogger(NestedForgetIT.class);
+    private static final Logger log = Logger.getLogger(NestedForgetIT.class);
     private static final long CRASH_RECOVERY_WAIT_S = 30;
     private static final long RECOVERY_SCAN_WAIT_MS = 120_000;
     private static final long CRASH_SCAN_WAIT_MS = 180_000;
@@ -112,7 +111,7 @@ class NestedForgetIT extends TestBase {
         try {
             lraClient.cancelLRA(lra);
         } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.info("cancelLRA returned {} for {}",
+            log.infof("cancelLRA returned %s for %s",
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown", lra);
         }
     }
@@ -121,7 +120,7 @@ class NestedForgetIT extends TestBase {
         try {
             lraClient.closeLRA(lra);
         } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.info("closeLRA returned {} for {}",
+            log.infof("closeLRA returned %s for %s",
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown", lra);
         }
     }
@@ -138,10 +137,10 @@ class NestedForgetIT extends TestBase {
     private void assertForgetCalledAtLeastOnce(URI lra) {
         int forgetCount = getForgetCallCount(lra);
         if (forgetCount == 0) {
-            log.warn("HA cache-staleness gap: @Forget did not fire for nested {} — "
+            log.warnf("HA cache-staleness gap: @Forget did not fire for nested %s — "
                     + "single-coord ForgetIT covers the strong case", lra);
         } else if (forgetCount > 1) {
-            log.warn("HA finding: @Forget called {} times for nested {} — coordinator duplicate-call detected",
+            log.warnf("HA finding: @Forget called %s times for nested %s — coordinator duplicate-call detected",
                     forgetCount, lra);
         }
     }

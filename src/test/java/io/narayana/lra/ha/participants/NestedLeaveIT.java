@@ -7,9 +7,8 @@ import io.quarkus.test.junit.QuarkusTest;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.Response;
 import java.net.URI;
+import org.jboss.logging.Logger;
 import org.junit.jupiter.api.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Verifies that a participant which removed itself from a nested transaction is not called
@@ -23,7 +22,7 @@ class NestedLeaveIT extends TestBase {
         return "nested-participant";
     }
 
-    private static final Logger log = LoggerFactory.getLogger(NestedLeaveIT.class);
+    private static final Logger log = Logger.getLogger(NestedLeaveIT.class);
 
     private static final long LRA_GONE_FAST_MS = 10_000;
     private static final long LRA_GONE_WAIT_MS = 30_000;
@@ -74,7 +73,7 @@ class NestedLeaveIT extends TestBase {
         try {
             lraClient.cancelLRA(nested);
         } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.info("cancelLRA returned {} — coordinator crashed",
+            log.infof("cancelLRA returned %s — coordinator crashed",
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
@@ -99,7 +98,7 @@ class NestedLeaveIT extends TestBase {
             lraClient.cancelLRA(nested);
         } catch (jakarta.ws.rs.NotFoundException ignored) {
         } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.info("cancelLRA returned {} — coordinator crashed",
+            log.infof("cancelLRA returned %s — coordinator crashed",
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
@@ -124,7 +123,7 @@ class NestedLeaveIT extends TestBase {
             lraClient.closeLRA(nested);
         } catch (jakarta.ws.rs.NotFoundException ignored) {
         } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.info("closeLRA returned {} — coordinator crashed",
+            log.infof("closeLRA returned %s — coordinator crashed",
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
@@ -149,7 +148,7 @@ class NestedLeaveIT extends TestBase {
         try {
             lraClient.leaveLRA(nested, compensatorLink);
         } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.info("leaveLRA returned {} after retry exhaustion",
+            log.infof("leaveLRA returned %s after retry exhaustion",
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
@@ -181,7 +180,7 @@ class NestedLeaveIT extends TestBase {
         try {
             lraClient.leaveLRA(nested, compensatorLink);
         } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.info("leaveLRA returned {} after retry exhaustion",
+            log.infof("leaveLRA returned %s after retry exhaustion",
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
@@ -213,7 +212,7 @@ class NestedLeaveIT extends TestBase {
         try {
             lraClient.leaveLRA(nested, compensatorLink);
         } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.info("leaveLRA returned {} after retry exhaustion",
+            log.infof("leaveLRA returned %s after retry exhaustion",
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
@@ -245,7 +244,7 @@ class NestedLeaveIT extends TestBase {
         try {
             lraClient.leaveLRA(nested, compensatorLink);
         } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.info("leaveLRA returned {} after retry exhaustion",
+            log.infof("leaveLRA returned %s after retry exhaustion",
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
@@ -274,7 +273,7 @@ class NestedLeaveIT extends TestBase {
                 .put(Entity.text(compensatorLink));
         int status = r.getStatus();
         r.close();
-        log.info("LEAVE call for nested lraId={} → {} returned HTTP {}", lraId, removeUri, status);
+        log.infof("LEAVE call for nested lraId=%s → %s returned HTTP %s", lraId, removeUri, status);
         assertEquals(200, status, "Leave endpoint must return 200; got " + status);
     }
 }

@@ -17,8 +17,7 @@ import org.eclipse.microprofile.lra.annotation.Complete;
 import org.eclipse.microprofile.lra.annotation.LRAStatus;
 import org.eclipse.microprofile.lra.annotation.ParticipantStatus;
 import org.eclipse.microprofile.lra.annotation.ws.rs.LRA;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.jboss.logging.Logger;
 
 /**
  * Records the post-terminal-state notification, exposing both a happy-path endpoint and
@@ -28,7 +27,7 @@ import org.slf4j.LoggerFactory;
 @Path("after-lra-participant")
 public class AfterLraParticipant {
 
-    private static final Logger log = LoggerFactory.getLogger(AfterLraParticipant.class);
+    private static final Logger log = Logger.getLogger(AfterLraParticipant.class);
 
     private final ConcurrentHashMap<String, String> receivedStatus = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, AtomicInteger> afterCallCounts = new ConcurrentHashMap<>();
@@ -46,7 +45,7 @@ public class AfterLraParticipant {
         String statusName = status != null ? status.name() : "null";
         receivedStatus.put(uid, statusName);
         boolean first = afterWorkDone.add(uid);
-        log.info("AFTER-LRA lraId={} status={} call#{} firstWork={}", lraId, statusName, n, first);
+        log.infof("AFTER-LRA lraId=%s status=%s call#%s firstWork=%s", lraId, statusName, n, first);
         return Response.ok().build();
     }
 
@@ -65,9 +64,9 @@ public class AfterLraParticipant {
         String statusName = status != null ? status.name() : "null";
         receivedStatus.put(uid, statusName);
         boolean first = afterWorkDone.add(uid); // side effect: happens only once
-        log.info("AFTER-LRA-IDEMPOTENT lraId={} status={} call#{} firstWork={}", lraId, statusName, n, first);
+        log.infof("AFTER-LRA-IDEMPOTENT lraId=%s status=%s call#%s firstWork=%s", lraId, statusName, n, first);
         if (n == 1) {
-            log.warn("AFTER-LRA-IDEMPOTENT lraId={} returning 500 on first call to trigger coordinator retry", lraId);
+            log.warnf("AFTER-LRA-IDEMPOTENT lraId=%s returning 500 on first call to trigger coordinator retry", lraId);
             return Response.serverError().build();
         }
         return Response.ok().build();
@@ -77,7 +76,7 @@ public class AfterLraParticipant {
     @PUT
     @Path("complete")
     public Response complete(@HeaderParam(LRA.LRA_HTTP_CONTEXT_HEADER) URI lraId) {
-        log.info("COMPLETE lraId={}", lraId);
+        log.infof("COMPLETE lraId=%s", lraId);
         return Response.ok(ParticipantStatus.Completed.name()).build();
     }
 
@@ -85,7 +84,7 @@ public class AfterLraParticipant {
     @PUT
     @Path("compensate")
     public Response compensate(@HeaderParam(LRA.LRA_HTTP_CONTEXT_HEADER) URI lraId) {
-        log.info("COMPENSATE lraId={}", lraId);
+        log.infof("COMPENSATE lraId=%s", lraId);
         return Response.ok(ParticipantStatus.Compensated.name()).build();
     }
 
@@ -93,7 +92,7 @@ public class AfterLraParticipant {
     @PUT
     @Path("complete-fail")
     public Response completeFail(@HeaderParam(LRA.LRA_HTTP_CONTEXT_HEADER) URI lraId) {
-        log.info("COMPLETE-FAIL lraId={}", lraId);
+        log.infof("COMPLETE-FAIL lraId=%s", lraId);
         return Response.status(Response.Status.CONFLICT)
                 .entity(ParticipantStatus.FailedToComplete.name())
                 .build();
@@ -103,7 +102,7 @@ public class AfterLraParticipant {
     @PUT
     @Path("compensate-fail")
     public Response compensateFail(@HeaderParam(LRA.LRA_HTTP_CONTEXT_HEADER) URI lraId) {
-        log.info("COMPENSATE-FAIL lraId={}", lraId);
+        log.infof("COMPENSATE-FAIL lraId=%s", lraId);
         return Response.status(Response.Status.CONFLICT)
                 .entity(ParticipantStatus.FailedToCompensate.name())
                 .build();

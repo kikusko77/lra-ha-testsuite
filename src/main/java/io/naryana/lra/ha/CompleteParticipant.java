@@ -16,8 +16,7 @@ import org.eclipse.microprofile.lra.annotation.Complete;
 import org.eclipse.microprofile.lra.annotation.ParticipantStatus;
 import org.eclipse.microprofile.lra.annotation.Status;
 import org.eclipse.microprofile.lra.annotation.ws.rs.LRA;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.jboss.logging.Logger;
 
 /**
  * Provides every close-callback variant along with an idempotent cancel endpoint for
@@ -27,7 +26,7 @@ import org.slf4j.LoggerFactory;
 @Path("complete-participant")
 public class CompleteParticipant {
 
-    private static final Logger log = LoggerFactory.getLogger(CompleteParticipant.class);
+    private static final Logger log = Logger.getLogger(CompleteParticipant.class);
 
     private final ConcurrentHashMap<String, AtomicInteger> idempotentCallCounts = new ConcurrentHashMap<>();
     private final Set<String> idempotentWorkDone = ConcurrentHashMap.newKeySet();
@@ -40,7 +39,7 @@ public class CompleteParticipant {
     @PUT
     @Path("complete")
     public Response complete(@HeaderParam(LRA.LRA_HTTP_CONTEXT_HEADER) URI lraId) {
-        log.info("COMPLETE lraId={}", lraId);
+        log.infof("COMPLETE lraId=%s", lraId);
         return Response.ok(ParticipantStatus.Completed.name()).build();
     }
 
@@ -51,7 +50,7 @@ public class CompleteParticipant {
         String uid = lraId.toASCIIString();
         int n = idempotentCallCounts.computeIfAbsent(uid, k -> new AtomicInteger()).incrementAndGet();
         boolean first = idempotentWorkDone.add(uid);
-        log.info("COMPLETE-IDEMPOTENT lraId={} call#{} first={}", lraId, n, first);
+        log.infof("COMPLETE-IDEMPOTENT lraId=%s call#%s first=%s", lraId, n, first);
         return Response.ok(ParticipantStatus.Completed.name()).build();
     }
 
@@ -62,7 +61,7 @@ public class CompleteParticipant {
         String uid = lraId.toASCIIString();
         int n = asyncCallCounts.computeIfAbsent(uid, k -> new AtomicInteger()).incrementAndGet();
         asyncCompleteCalled.add(uid);
-        log.info("COMPLETE-ASYNC lraId={} call#{}", lraId, n);
+        log.infof("COMPLETE-ASYNC lraId=%s call#%s", lraId, n);
         return Response.accepted().build();
     }
 
@@ -70,7 +69,7 @@ public class CompleteParticipant {
     @PUT
     @Path("complete-fail")
     public Response completeFail(@HeaderParam(LRA.LRA_HTTP_CONTEXT_HEADER) URI lraId) {
-        log.info("COMPLETE-FAIL lraId={}", lraId);
+        log.infof("COMPLETE-FAIL lraId=%s", lraId);
         return Response.status(Response.Status.CONFLICT)
                 .entity(ParticipantStatus.FailedToComplete.name())
                 .build();
@@ -83,10 +82,10 @@ public class CompleteParticipant {
         String uid = lraId.toASCIIString();
         int call = unreachableCallCounts.computeIfAbsent(uid, k -> new AtomicInteger()).incrementAndGet();
         if (call == 1) {
-            log.warn("COMPLETE-UNREACHABLE lraId={} simulating crash on first call", lraId);
+            log.warnf("COMPLETE-UNREACHABLE lraId=%s simulating crash on first call", lraId);
             return Response.status(503).build();
         }
-        log.info("COMPLETE-UNREACHABLE lraId={} recovered on call#{}", lraId, call);
+        log.infof("COMPLETE-UNREACHABLE lraId=%s recovered on call#%s", lraId, call);
         return Response.ok(ParticipantStatus.Completed.name()).build();
     }
 
@@ -102,7 +101,7 @@ public class CompleteParticipant {
         ParticipantStatus ps = asyncCompleteCalled.contains(uid)
                 ? ParticipantStatus.Completed
                 : ParticipantStatus.Active;
-        log.info("STATUS-FOR-ASYNC-COMPLETE lraId={} call#{} → {}", lraId, n, ps);
+        log.infof("STATUS-FOR-ASYNC-COMPLETE lraId=%s call#%s → %s", lraId, n, ps);
         return Response.ok(ps.name()).build();
     }
 
@@ -110,7 +109,7 @@ public class CompleteParticipant {
     @PUT
     @Path("compensate")
     public Response compensate(@HeaderParam(LRA.LRA_HTTP_CONTEXT_HEADER) URI lraId) {
-        log.info("COMPENSATE lraId={}", lraId);
+        log.infof("COMPENSATE lraId=%s", lraId);
         return Response.ok(ParticipantStatus.Compensated.name()).build();
     }
 
@@ -126,7 +125,7 @@ public class CompleteParticipant {
         String uid = lraId.toASCIIString();
         int n = idempotentCallCounts.computeIfAbsent(uid, k -> new AtomicInteger()).incrementAndGet();
         boolean first = idempotentWorkDone.add(uid);
-        log.info("COMPENSATE-IDEMPOTENT lraId={} call#{} first={}", lraId, n, first);
+        log.infof("COMPENSATE-IDEMPOTENT lraId=%s call#%s first=%s", lraId, n, first);
         return Response.ok(ParticipantStatus.Compensated.name()).build();
     }
 

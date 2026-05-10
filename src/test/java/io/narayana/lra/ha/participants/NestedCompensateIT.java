@@ -7,9 +7,8 @@ import io.narayana.lra.LRAConstants;
 import io.quarkus.test.junit.QuarkusTest;
 import java.net.URI;
 import java.util.List;
+import org.jboss.logging.Logger;
 import org.junit.jupiter.api.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Mirrors the cancel-callback scenarios for a child transaction whose parent runs on a
@@ -23,7 +22,7 @@ class NestedCompensateIT extends TestBase {
         return "nested-participant";
     }
 
-    private static final Logger log = LoggerFactory.getLogger(NestedCompensateIT.class);
+    private static final Logger log = Logger.getLogger(NestedCompensateIT.class);
 
     private static final long CRASH_RECOVERY_WAIT_S = 15;
     private static final long LRA_GONE_WAIT_MS = 30_000;
@@ -42,7 +41,7 @@ class NestedCompensateIT extends TestBase {
         try {
             lraClient.cancelLRA(nested);
         } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.info("cancelLRA returned {} (coordinator crashed)",
+            log.infof("cancelLRA returned %s (coordinator crashed)",
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
@@ -51,7 +50,7 @@ class NestedCompensateIT extends TestBase {
 
         int callCount = getIdempotentCallCount(nested);
         int workDone = getIdempotentWorkDone(nested);
-        log.info("After crash recovery: callCount={}, workDone={}", callCount, workDone);
+        log.infof("After crash recovery: callCount=%s, workDone=%s", callCount, workDone);
 
         assertTrue(callCount >= 1, "Compensate must have been called at least once, got " + callCount);
         assertEquals(1, workDone, "Side effect must be performed exactly once regardless of retry count");
@@ -71,7 +70,7 @@ class NestedCompensateIT extends TestBase {
         } catch (jakarta.ws.rs.NotFoundException e) {
             log.info("cancelLRA returned 404, treating as already processed");
         } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.info("cancelLRA returned {} (coordinator crashed)",
+            log.infof("cancelLRA returned %s (coordinator crashed)",
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
@@ -94,7 +93,7 @@ class NestedCompensateIT extends TestBase {
         try {
             lraClient.cancelLRA(nested);
         } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.info("cancelLRA returned {} (coordinator crashed)",
+            log.infof("cancelLRA returned %s (coordinator crashed)",
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
@@ -117,7 +116,7 @@ class NestedCompensateIT extends TestBase {
         try {
             lraClient.cancelLRA(nested);
         } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.info("cancelLRA returned {}, coordinator crashed",
+            log.infof("cancelLRA returned %s, coordinator crashed",
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
@@ -137,7 +136,7 @@ class NestedCompensateIT extends TestBase {
         try {
             lraClient.cancelLRA(nested);
         } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.info("cancelLRA returned {} — coordinator crashed after 202",
+            log.infof("cancelLRA returned %s — coordinator crashed after 202",
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
@@ -146,7 +145,7 @@ class NestedCompensateIT extends TestBase {
 
         int compensateCalls = getAsyncCallCount(nested);
         int statusCalls = getAsyncStatusCallCount(nested);
-        log.info("After async proxy failover: compensateCalls={}, statusCalls={}", compensateCalls, statusCalls);
+        log.infof("After async proxy failover: compensateCalls=%s, statusCalls=%s", compensateCalls, statusCalls);
 
         assertEquals(1, compensateCalls,
                 "Async @Compensate should be called exactly once in END_DURING_CLEANUP failover");
@@ -169,7 +168,7 @@ class NestedCompensateIT extends TestBase {
         try {
             lraClient.cancelLRA(nested);
         } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.info("cancelLRA returned {} — coordinator crashed after 202",
+            log.infof("cancelLRA returned %s — coordinator crashed after 202",
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
@@ -178,7 +177,7 @@ class NestedCompensateIT extends TestBase {
 
         int compensateCalls = getAsyncCallCount(nested);
         int statusCalls = getAsyncStatusCallCount(nested);
-        log.info("After async crash recovery: compensateCalls={}, statusCalls={}", compensateCalls, statusCalls);
+        log.infof("After async crash recovery: compensateCalls=%s, statusCalls=%s", compensateCalls, statusCalls);
 
         assertEquals(1, compensateCalls,
                 "Async @Compensate should not be replayed after END_AFTER_PARTICIPANT_RESPONSE; got "
@@ -199,7 +198,7 @@ class NestedCompensateIT extends TestBase {
         try {
             lraClient.cancelLRA(nested);
         } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.info("cancelLRA returned {} — coordinator crashed after 200",
+            log.infof("cancelLRA returned %s — coordinator crashed after 200",
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
@@ -208,7 +207,7 @@ class NestedCompensateIT extends TestBase {
 
         int callCount = getIdempotentCallCount(nested);
         int workDone = getIdempotentWorkDone(nested);
-        log.info("After crash recovery: callCount={}, workDone={}", callCount, workDone);
+        log.infof("After crash recovery: callCount=%s, workDone=%s", callCount, workDone);
 
         assertTrue(callCount >= 1,
                 "Compensate must be called at least once, got " + callCount);
@@ -226,7 +225,7 @@ class NestedCompensateIT extends TestBase {
         try {
             lraClient.cancelLRA(nested);
         } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.info("cancelLRA returned {} (503 from participant)",
+            log.infof("cancelLRA returned %s (503 from participant)",
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
         waitForNoActiveLra(nested, RECOVERY_SCAN_WAIT_MS);
@@ -242,7 +241,7 @@ class NestedCompensateIT extends TestBase {
         try {
             lraClient.cancelLRA(nested);
         } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.info("cancelLRA returned {} for fail scenario",
+            log.infof("cancelLRA returned %s for fail scenario",
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 

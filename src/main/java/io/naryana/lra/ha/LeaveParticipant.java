@@ -15,8 +15,7 @@ import org.eclipse.microprofile.lra.annotation.Complete;
 import org.eclipse.microprofile.lra.annotation.ParticipantStatus;
 import org.eclipse.microprofile.lra.annotation.ws.rs.LRA;
 import org.eclipse.microprofile.lra.annotation.ws.rs.Leave;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.jboss.logging.Logger;
 
 /**
  * Participant that can remove itself from an active transaction; the coordinator then
@@ -26,7 +25,7 @@ import org.slf4j.LoggerFactory;
 @Path("leave-participant")
 public class LeaveParticipant {
 
-    private static final Logger log = LoggerFactory.getLogger(LeaveParticipant.class);
+    private static final Logger log = Logger.getLogger(LeaveParticipant.class);
 
     private final ConcurrentHashMap<String, AtomicInteger> callCounts = new ConcurrentHashMap<>();
 
@@ -36,7 +35,7 @@ public class LeaveParticipant {
     public Response compensate(@HeaderParam(LRA.LRA_HTTP_CONTEXT_HEADER) URI lraId) {
         String uid = lraId.toASCIIString();
         int n = callCounts.computeIfAbsent(uid, k -> new AtomicInteger()).incrementAndGet();
-        log.info("COMPENSATE lraId={} call#{}", lraId, n);
+        log.infof("COMPENSATE lraId=%s call#%s", lraId, n);
         return Response.ok(ParticipantStatus.Compensated.name()).build();
     }
 
@@ -46,7 +45,7 @@ public class LeaveParticipant {
     public Response complete(@HeaderParam(LRA.LRA_HTTP_CONTEXT_HEADER) URI lraId) {
         String uid = lraId.toASCIIString();
         int n = callCounts.computeIfAbsent(uid, k -> new AtomicInteger()).incrementAndGet();
-        log.info("COMPLETE lraId={} call#{}", lraId, n);
+        log.infof("COMPLETE lraId=%s call#%s", lraId, n);
         return Response.ok(ParticipantStatus.Completed.name()).build();
     }
 
@@ -59,7 +58,7 @@ public class LeaveParticipant {
     @PUT
     @Path("leave")
     public Response leave(@HeaderParam(LRA.LRA_HTTP_CONTEXT_HEADER) URI lraId) {
-        log.info("LEAVE called for lraId={} — filter will remove this participant", lraId);
+        log.infof("LEAVE called for lraId=%s — filter will remove this participant", lraId);
         return Response.ok().build();
     }
 

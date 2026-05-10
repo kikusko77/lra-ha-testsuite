@@ -6,9 +6,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.quarkus.test.junit.QuarkusTest;
 import java.net.URI;
+import org.jboss.logging.Logger;
 import org.junit.jupiter.api.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Mirrors the asynchronous status-polling resolution paths for nested transactions whose
@@ -22,7 +21,7 @@ class NestedStatusIT extends TestBase {
         return "nested-participant";
     }
 
-    private static final Logger log = LoggerFactory.getLogger(NestedStatusIT.class);
+    private static final Logger log = Logger.getLogger(NestedStatusIT.class);
 
     private static final long LRA_GONE_FAST_MS = 10_000;
     private static final long LRA_GONE_WAIT_MS = 30_000;
@@ -41,7 +40,7 @@ class NestedStatusIT extends TestBase {
 
         int compensateCalls = getAsyncCompensateCallCount(nested);
         int statusCalls = getStatusGoneCallCount(nested);
-        log.info("compensateCalls={} statusGoneCalls={}", compensateCalls, statusCalls);
+        log.infof("compensateCalls=%s statusGoneCalls=%s", compensateCalls, statusCalls);
 
         assertEquals(1, compensateCalls, "@Compensate must be called exactly once");
         assertTrue(statusCalls >= 1,
@@ -61,7 +60,7 @@ class NestedStatusIT extends TestBase {
 
         int completeCalls = getAsyncCompleteCallCount(nested);
         int statusCalls = getStatusGoneCallCount(nested);
-        log.info("completeCalls={} statusGoneCalls={}", completeCalls, statusCalls);
+        log.infof("completeCalls=%s statusGoneCalls=%s", completeCalls, statusCalls);
 
         assertEquals(1, completeCalls, "@Complete must be called exactly once");
         assertTrue(statusCalls >= 1,
@@ -82,7 +81,7 @@ class NestedStatusIT extends TestBase {
 
         int compensateCalls = getAsyncCompensateCallCount(nested);
         int statusCalls = getStatusIntermediateCompensateCallCount(nested);
-        log.info("compensateCalls={} intermediateStatusCalls={}", compensateCalls, statusCalls);
+        log.infof("compensateCalls=%s intermediateStatusCalls=%s", compensateCalls, statusCalls);
 
         assertEquals(1, compensateCalls, "@Compensate must be called exactly once");
         assertTrue(statusCalls >= 1,
@@ -103,7 +102,7 @@ class NestedStatusIT extends TestBase {
 
         int completeCalls = getAsyncCompleteCallCount(nested);
         int statusCalls = getStatusIntermediateCompleteCallCount(nested);
-        log.info("completeCalls={} intermediateStatusCalls={}", completeCalls, statusCalls);
+        log.infof("completeCalls=%s intermediateStatusCalls=%s", completeCalls, statusCalls);
 
         assertEquals(1, completeCalls, "@Complete must be called exactly once");
         assertTrue(statusCalls >= 1,
@@ -125,7 +124,7 @@ class NestedStatusIT extends TestBase {
         try {
             lraClient.cancelLRA(nested);
         } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.info("cancelLRA returned {} — coordinator crashed after 202",
+            log.infof("cancelLRA returned %s — coordinator crashed after 202",
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
@@ -134,7 +133,7 @@ class NestedStatusIT extends TestBase {
 
         int compensateCalls = getAsyncCompensateCallCount(nested);
         int statusCalls = getStatusGoneCallCount(nested);
-        log.info("After crash recovery: compensateCalls={} statusGoneCalls={}", compensateCalls, statusCalls);
+        log.infof("After crash recovery: compensateCalls=%s statusGoneCalls=%s", compensateCalls, statusCalls);
 
         assertEquals(1, compensateCalls,
                 "@Compensate must not be replayed when @Status 410 already signals completion; got "
@@ -158,7 +157,7 @@ class NestedStatusIT extends TestBase {
         try {
             lraClient.closeLRA(nested);
         } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.info("closeLRA returned {} — coordinator crashed after 202",
+            log.infof("closeLRA returned %s — coordinator crashed after 202",
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
@@ -167,7 +166,7 @@ class NestedStatusIT extends TestBase {
 
         int completeCalls = getAsyncCompleteCallCount(nested);
         int statusCalls = getStatusIntermediateCompleteCallCount(nested);
-        log.info("After crash recovery: completeCalls={} intermediateStatusCalls={}", completeCalls, statusCalls);
+        log.infof("After crash recovery: completeCalls=%s intermediateStatusCalls=%s", completeCalls, statusCalls);
 
         assertEquals(1, completeCalls,
                 "@Complete must not be replayed when recovery resolves via @Status polling; got "

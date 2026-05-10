@@ -6,9 +6,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.quarkus.test.junit.QuarkusTest;
 import java.net.URI;
+import org.jboss.logging.Logger;
 import org.junit.jupiter.api.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Covers the asynchronous status-polling resolution paths that the synchronous suites cannot
@@ -22,7 +21,7 @@ class StatusIT extends TestBase {
         return "status-participant";
     }
 
-    private static final Logger log = LoggerFactory.getLogger(StatusIT.class);
+    private static final Logger log = Logger.getLogger(StatusIT.class);
 
     private static final long LRA_GONE_FAST_MS = 10_000;
     private static final long LRA_GONE_WAIT_MS = 30_000;
@@ -49,7 +48,7 @@ class StatusIT extends TestBase {
         int compensateCalls = getAsyncCompensateCallCount(lra);
         int statusCalls = getStatusGoneCallCount(lra);
 
-        log.info("compensateCalls={} statusGoneCalls={}", compensateCalls, statusCalls);
+        log.infof("compensateCalls=%s statusGoneCalls=%s", compensateCalls, statusCalls);
 
         assertEquals(1, compensateCalls, "@Compensate must be called exactly once");
         assertTrue(statusCalls >= 1,
@@ -77,7 +76,7 @@ class StatusIT extends TestBase {
         int completeCalls = getAsyncCompleteCallCount(lra);
         int statusCalls = getStatusGoneCallCount(lra);
 
-        log.info("completeCalls={} statusGoneCalls={}", completeCalls, statusCalls);
+        log.infof("completeCalls=%s statusGoneCalls=%s", completeCalls, statusCalls);
 
         assertEquals(1, completeCalls, "@Complete must be called exactly once");
         assertTrue(statusCalls >= 1,
@@ -109,7 +108,7 @@ class StatusIT extends TestBase {
         int compensateCalls = getAsyncCompensateCallCount(lra);
         int statusCalls = getStatusIntermediateCompensateCallCount(lra);
 
-        log.info("compensateCalls={} intermediateStatusCalls={}", compensateCalls, statusCalls);
+        log.infof("compensateCalls=%s intermediateStatusCalls=%s", compensateCalls, statusCalls);
 
         assertEquals(1, compensateCalls, "@Compensate must be called exactly once");
         // TODO (coordinator): after @Status returns Compensating (HEURISTIC_HAZARD), the RecoveringLRA
@@ -143,7 +142,7 @@ class StatusIT extends TestBase {
         int completeCalls = getAsyncCompleteCallCount(lra);
         int statusCalls = getStatusIntermediateCompleteCallCount(lra);
 
-        log.info("completeCalls={} intermediateStatusCalls={}", completeCalls, statusCalls);
+        log.infof("completeCalls=%s intermediateStatusCalls=%s", completeCalls, statusCalls);
 
         assertEquals(1, completeCalls, "@Complete must be called exactly once");
         // TODO (coordinator): same retry gap as the compensate variant — see comment in
@@ -172,7 +171,7 @@ class StatusIT extends TestBase {
         try {
             lraClient.cancelLRA(lra);
         } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.info("cancelLRA returned {} — coordinator crashed after receiving participant 202",
+            log.infof("cancelLRA returned %s — coordinator crashed after receiving participant 202",
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
@@ -183,7 +182,7 @@ class StatusIT extends TestBase {
         int compensateCalls = getAsyncCompensateCallCount(lra);
         int statusCalls = getStatusGoneCallCount(lra);
 
-        log.info("After crash recovery: compensateCalls={} statusGoneCalls={}", compensateCalls, statusCalls);
+        log.infof("After crash recovery: compensateCalls=%s statusGoneCalls=%s", compensateCalls, statusCalls);
 
         assertEquals(1, compensateCalls,
                 "@Compensate must not be replayed when @Status 410 already signals completion; got "
@@ -212,7 +211,7 @@ class StatusIT extends TestBase {
         try {
             lraClient.closeLRA(lra);
         } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.info("closeLRA returned {} — coordinator crashed after receiving participant 202",
+            log.infof("closeLRA returned %s — coordinator crashed after receiving participant 202",
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
@@ -223,7 +222,7 @@ class StatusIT extends TestBase {
         int completeCalls = getAsyncCompleteCallCount(lra);
         int statusCalls = getStatusIntermediateCompleteCallCount(lra);
 
-        log.info("After crash recovery: completeCalls={} intermediateStatusCalls={}", completeCalls, statusCalls);
+        log.infof("After crash recovery: completeCalls=%s intermediateStatusCalls=%s", completeCalls, statusCalls);
 
         assertEquals(1, completeCalls,
                 "@Complete must not be replayed when recovery resolves via @Status polling; got "

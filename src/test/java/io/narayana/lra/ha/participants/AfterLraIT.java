@@ -5,9 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import io.quarkus.test.junit.QuarkusTest;
 import java.net.URI;
 import org.eclipse.microprofile.lra.annotation.LRAStatus;
+import org.jboss.logging.Logger;
 import org.junit.jupiter.api.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Verifies the post-terminal-state notification fires with the correct outcome for every
@@ -21,7 +20,7 @@ class AfterLraIT extends TestBase {
         return "after-lra-participant";
     }
 
-    private static final Logger log = LoggerFactory.getLogger(AfterLraIT.class);
+    private static final Logger log = Logger.getLogger(AfterLraIT.class);
 
     private static final long LRA_GONE_FAST_MS = 10_000;
     private static final long LRA_GONE_WAIT_MS = 30_000;
@@ -37,7 +36,7 @@ class AfterLraIT extends TestBase {
         try {
             lraClient.cancelLRA(lra);
         } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.info("cancelLRA returned {}", e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
+            log.infof("cancelLRA returned %s", e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
         waitForNoActiveLra(lra, LRA_GONE_FAST_MS);
@@ -59,7 +58,7 @@ class AfterLraIT extends TestBase {
         try {
             lraClient.closeLRA(lra);
         } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.info("closeLRA returned {} — expected for fail scenario",
+            log.infof("closeLRA returned %s — expected for fail scenario",
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
@@ -80,7 +79,7 @@ class AfterLraIT extends TestBase {
         try {
             lraClient.cancelLRA(lra);
         } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.info("cancelLRA returned {} — expected for fail scenario",
+            log.infof("cancelLRA returned %s — expected for fail scenario",
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
@@ -113,7 +112,7 @@ class AfterLraIT extends TestBase {
         } catch (jakarta.ws.rs.NotFoundException e) {
             log.info("cancelLRA returned 404, treating as already processed");
         } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.info("cancelLRA returned {} — coordinator crashed as expected",
+            log.infof("cancelLRA returned %s — coordinator crashed as expected",
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
@@ -143,7 +142,7 @@ class AfterLraIT extends TestBase {
         try {
             lraClient.closeLRA(lra);
         } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.info("closeLRA returned {} — coordinator crashed during cleanup",
+            log.infof("closeLRA returned %s — coordinator crashed during cleanup",
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 

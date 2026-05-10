@@ -10,8 +10,7 @@ import org.eclipse.microprofile.lra.annotation.Compensate;
 import org.eclipse.microprofile.lra.annotation.Complete;
 import org.eclipse.microprofile.lra.annotation.ParticipantStatus;
 import org.eclipse.microprofile.lra.annotation.ws.rs.LRA;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.jboss.logging.Logger;
 
 /**
  * Minimal participant exposing only the compensate and complete endpoints needed
@@ -21,13 +20,13 @@ import org.slf4j.LoggerFactory;
 @Path("participant")
 public class Participant {
 
-    private static final Logger log = LoggerFactory.getLogger(Participant.class);
+    private static final Logger log = Logger.getLogger(Participant.class);
 
     @Compensate
     @PUT
     @Path("compensate")
     public Response compensate(@HeaderParam(LRA.LRA_HTTP_CONTEXT_HEADER) URI lraId) {
-        log.info("COMPENSATE lraId={}", lraId);
+        log.infof("COMPENSATE lraId=%s", lraId);
         return Response.ok(ParticipantStatus.Compensated.name()).build();
     }
 
@@ -35,7 +34,7 @@ public class Participant {
     @PUT
     @Path("complete")
     public Response complete(@HeaderParam(LRA.LRA_HTTP_CONTEXT_HEADER) URI lraId) {
-        log.info("COMPLETE lraId={}", lraId);
+        log.infof("COMPLETE lraId=%s", lraId);
         return Response.ok(ParticipantStatus.Completed.name()).build();
     }
 }

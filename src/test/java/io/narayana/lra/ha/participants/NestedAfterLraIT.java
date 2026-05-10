@@ -5,9 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import io.quarkus.test.junit.QuarkusTest;
 import java.net.URI;
 import org.eclipse.microprofile.lra.annotation.LRAStatus;
+import org.jboss.logging.Logger;
 import org.junit.jupiter.api.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Verifies the post-terminal-state notification reaches the nested participant when the
@@ -21,7 +20,7 @@ class NestedAfterLraIT extends TestBase {
         return "nested-participant";
     }
 
-    private static final Logger log = LoggerFactory.getLogger(NestedAfterLraIT.class);
+    private static final Logger log = Logger.getLogger(NestedAfterLraIT.class);
 
     private static final long LRA_GONE_FAST_MS = 10_000;
     private static final long LRA_GONE_WAIT_MS = 30_000;
@@ -144,9 +143,9 @@ class NestedAfterLraIT extends TestBase {
             assertEquals(expected.name(), getAfterLraStatus(nested),
                     "@AfterLRA delivered with wrong status (expected " + expected + ")");
         } else {
-            log.warn("HA cache-staleness gap: @AfterLRA did not fire on the parent-end cascade "
-                    + "for nested {} — single-coord AfterLraIT covers the strong case "
-                    + "(expected status would have been {})", nested, expected);
+            log.warnf("HA cache-staleness gap: @AfterLRA did not fire on the parent-end cascade "
+                    + "for nested %s — single-coord AfterLraIT covers the strong case "
+                    + "(expected status would have been %s)", nested, expected);
         }
     }
 
@@ -154,7 +153,7 @@ class NestedAfterLraIT extends TestBase {
         try {
             lraClient.closeLRA(lra);
         } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.info("closeLRA returned {} for {}",
+            log.infof("closeLRA returned %s for %s",
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown", lra);
         }
     }
@@ -163,9 +162,9 @@ class NestedAfterLraIT extends TestBase {
         try {
             lraClient.cancelLRA(lra);
         } catch (jakarta.ws.rs.NotFoundException e) {
-            log.info("cancelLRA 404 for {}, treating as already processed", lra);
+            log.infof("cancelLRA 404 for %s, treating as already processed", lra);
         } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.info("cancelLRA returned {} for {}",
+            log.infof("cancelLRA returned %s for %s",
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown", lra);
         }
     }

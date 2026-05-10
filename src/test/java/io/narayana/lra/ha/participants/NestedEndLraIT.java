@@ -6,9 +6,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import io.narayana.lra.LRAConstants;
 import io.quarkus.test.junit.QuarkusTest;
 import java.net.URI;
+import org.jboss.logging.Logger;
 import org.junit.jupiter.api.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Exercises ending a nested transaction across crash points and cascade orderings,
@@ -22,7 +21,7 @@ class NestedEndLraIT extends TestBase {
         return "nested-participant";
     }
 
-    private static final Logger log = LoggerFactory.getLogger(NestedEndLraIT.class);
+    private static final Logger log = Logger.getLogger(NestedEndLraIT.class);
 
     private static final long LRA_GONE_FAST_MS = 10_000;
     private static final long LRA_GONE_WAIT_MS = 30_000;
@@ -55,7 +54,7 @@ class NestedEndLraIT extends TestBase {
         } catch (jakarta.ws.rs.NotFoundException e) {
             log.info("cancelLRA returned 404 after failover, treating as already finished");
         } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.info("cancelLRA returned {} after failover for nested {}",
+            log.infof("cancelLRA returned %s after failover for nested %s",
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown", nested);
         }
 
@@ -91,7 +90,7 @@ class NestedEndLraIT extends TestBase {
         } catch (jakarta.ws.rs.NotFoundException e) {
             log.info("closeLRA returned 404 after failover, treating as already finished");
         } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.info("closeLRA returned {} after failover for nested {}",
+            log.infof("closeLRA returned %s after failover for nested %s",
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown", nested);
         }
 
@@ -112,7 +111,7 @@ class NestedEndLraIT extends TestBase {
             lraClient.cancelLRA(nested);
         } catch (jakarta.ws.rs.NotFoundException ignored) {
         } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.info("cancelLRA returned {} during cleanup for nested {}",
+            log.infof("cancelLRA returned %s during cleanup for nested %s",
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown", nested);
         }
 
@@ -133,7 +132,7 @@ class NestedEndLraIT extends TestBase {
             lraClient.closeLRA(nested);
         } catch (jakarta.ws.rs.NotFoundException ignored) {
         } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.info("closeLRA returned {} during cleanup for nested {}",
+            log.infof("closeLRA returned %s during cleanup for nested %s",
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown", nested);
         }
 
@@ -171,13 +170,13 @@ class NestedEndLraIT extends TestBase {
         try {
             lraClient.cancelLRA(parent);
         } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.info("parent cancelLRA returned {}",
+            log.infof("parent cancelLRA returned %s",
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
         waitForNoActiveLra(parent, LRA_GONE_WAIT_MS);
 
         int total = getIdempotentCallCount(nested);
-        log.info("Total nested participant callbacks (complete + compensate) = {}", total);
+        log.infof("Total nested participant callbacks (complete + compensate) = %s", total);
         if (total < 2) {
             log.warn("HA cache-staleness gap: parent-cancel cascade did not deliver @Compensate "
                     + "to the already-closed nested participant. The spec mandates participant-side "
@@ -202,7 +201,7 @@ class NestedEndLraIT extends TestBase {
         try {
             lraClient.cancelLRA(parent);
         } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.info("parent cancelLRA returned {} — coordinator crashed",
+            log.infof("parent cancelLRA returned %s — coordinator crashed",
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
@@ -210,7 +209,7 @@ class NestedEndLraIT extends TestBase {
         waitForNoActiveLra(parent, LRA_GONE_WAIT_MS);
 
         int total = getIdempotentCallCount(nested);
-        log.info("Total callbacks (complete + compensate) after crash recovery = {}", total);
+        log.infof("Total callbacks (complete + compensate) after crash recovery = %s", total);
         if (total < 2) {
             log.warn("HA cache-staleness gap (with crash): parent-cancel cascade did not deliver "
                     + "@Compensate to the already-closed nested participant.");

@@ -18,8 +18,7 @@ import org.eclipse.microprofile.lra.annotation.Forget;
 import org.eclipse.microprofile.lra.annotation.ParticipantStatus;
 import org.eclipse.microprofile.lra.annotation.Status;
 import org.eclipse.microprofile.lra.annotation.ws.rs.LRA;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.jboss.logging.Logger;
 
 /**
  * Drives the cleanup-after-failure path: returns 202, then reports a failed terminal
@@ -29,7 +28,7 @@ import org.slf4j.LoggerFactory;
 @Path("forget-participant")
 public class ForgetParticipant {
 
-    private static final Logger log = LoggerFactory.getLogger(ForgetParticipant.class);
+    private static final Logger log = Logger.getLogger(ForgetParticipant.class);
 
     private final Set<String> asyncCompensateCalled = ConcurrentHashMap.newKeySet();
     private final Set<String> asyncCompleteCalled = ConcurrentHashMap.newKeySet();
@@ -44,7 +43,7 @@ public class ForgetParticipant {
         String uid = lraId.toASCIIString();
         int n = asyncCallCounts.computeIfAbsent(uid, k -> new AtomicInteger()).incrementAndGet();
         asyncCompensateCalled.add(uid);
-        log.info("COMPENSATE-ASYNC lraId={} call#{}", lraId, n);
+        log.infof("COMPENSATE-ASYNC lraId=%s call#%s", lraId, n);
         return Response.accepted().build();
     }
 
@@ -55,7 +54,7 @@ public class ForgetParticipant {
         String uid = lraId.toASCIIString();
         int n = asyncCallCounts.computeIfAbsent(uid, k -> new AtomicInteger()).incrementAndGet();
         asyncCompleteCalled.add(uid);
-        log.info("COMPLETE-ASYNC lraId={} call#{}", lraId, n);
+        log.infof("COMPLETE-ASYNC lraId=%s call#%s", lraId, n);
         return Response.accepted().build();
     }
 
@@ -72,7 +71,7 @@ public class ForgetParticipant {
         ParticipantStatus ps = asyncCompensateCalled.contains(uid)
                 ? ParticipantStatus.FailedToCompensate
                 : ParticipantStatus.Active;
-        log.info("STATUS-FOR-FORGET-COMPENSATE lraId={} call#{} → {}", lraId, n, ps);
+        log.infof("STATUS-FOR-FORGET-COMPENSATE lraId=%s call#%s → %s", lraId, n, ps);
         return Response.ok(ps.name()).build();
     }
 
@@ -89,7 +88,7 @@ public class ForgetParticipant {
         ParticipantStatus ps = asyncCompleteCalled.contains(uid)
                 ? ParticipantStatus.FailedToComplete
                 : ParticipantStatus.Active;
-        log.info("STATUS-FOR-FORGET-COMPLETE lraId={} call#{} → {}", lraId, n, ps);
+        log.infof("STATUS-FOR-FORGET-COMPLETE lraId=%s call#%s → %s", lraId, n, ps);
         return Response.ok(ps.name()).build();
     }
 
@@ -99,7 +98,7 @@ public class ForgetParticipant {
     public Response forget(@HeaderParam(LRA.LRA_HTTP_CONTEXT_HEADER) URI lraId) {
         String uid = lraId.toASCIIString();
         int n = forgetCallCounts.computeIfAbsent(uid, k -> new AtomicInteger()).incrementAndGet();
-        log.info("FORGET lraId={} call#{}", lraId, n);
+        log.infof("FORGET lraId=%s call#%s", lraId, n);
         return Response.ok().build();
     }
 
@@ -107,7 +106,7 @@ public class ForgetParticipant {
     @PUT
     @Path("compensate")
     public Response compensate(@HeaderParam(LRA.LRA_HTTP_CONTEXT_HEADER) URI lraId) {
-        log.info("COMPENSATE lraId={}", lraId);
+        log.infof("COMPENSATE lraId=%s", lraId);
         return Response.ok(ParticipantStatus.Compensated.name()).build();
     }
 
@@ -115,7 +114,7 @@ public class ForgetParticipant {
     @PUT
     @Path("complete")
     public Response complete(@HeaderParam(LRA.LRA_HTTP_CONTEXT_HEADER) URI lraId) {
-        log.info("COMPLETE lraId={}", lraId);
+        log.infof("COMPLETE lraId=%s", lraId);
         return Response.ok(ParticipantStatus.Completed.name()).build();
     }
 

@@ -5,9 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.quarkus.test.junit.QuarkusTest;
 import java.net.URI;
+import org.jboss.logging.Logger;
 import org.junit.jupiter.api.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Verifies that the cleanup callback fires after a failed terminal outcome, including
@@ -21,7 +20,7 @@ class ForgetIT extends TestBase {
         return "forget-participant";
     }
 
-    private static final Logger log = LoggerFactory.getLogger(ForgetIT.class);
+    private static final Logger log = Logger.getLogger(ForgetIT.class);
     private static final long CRASH_RECOVERY_WAIT_S = 30;
     private static final long RECOVERY_SCAN_WAIT_MS = 120_000;
     private static final long CRASH_SCAN_WAIT_MS = 180_000;
@@ -42,7 +41,7 @@ class ForgetIT extends TestBase {
         try {
             lraClient.cancelLRA(lra);
         } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.info("cancelLRA returned {}, coordinator crashed as expected",
+            log.infof("cancelLRA returned %s, coordinator crashed as expected",
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
@@ -70,7 +69,7 @@ class ForgetIT extends TestBase {
         try {
             lraClient.cancelLRA(lra);
         } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.info("cancelLRA returned {} — coordinator crashed after 202, proxy will fail over",
+            log.infof("cancelLRA returned %s — coordinator crashed after 202, proxy will fail over",
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
@@ -99,7 +98,7 @@ class ForgetIT extends TestBase {
         try {
             lraClient.closeLRA(lra);
         } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.info("closeLRA returned {}, coordinator crashed as expected",
+            log.infof("closeLRA returned %s, coordinator crashed as expected",
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
@@ -127,7 +126,7 @@ class ForgetIT extends TestBase {
         try {
             lraClient.closeLRA(lra);
         } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.info("closeLRA returned {} — coordinator crashed after 202, proxy will fail over",
+            log.infof("closeLRA returned %s — coordinator crashed after 202, proxy will fail over",
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
@@ -154,7 +153,7 @@ class ForgetIT extends TestBase {
         int forgetCount = getForgetCallCount(lra);
         assertTrue(forgetCount >= 1, "@Forget must be called at least once");
         if (forgetCount > 1) {
-            log.warn("HA finding: @Forget called {} times for {} — coordinator duplicate-call detected; "
+            log.warnf("HA finding: @Forget called %s times for %s — coordinator duplicate-call detected; "
                     + "multiple recovery scanners processed the same LRA record concurrently",
                     forgetCount, lra);
         }

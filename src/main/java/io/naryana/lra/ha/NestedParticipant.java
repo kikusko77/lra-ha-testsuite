@@ -22,14 +22,13 @@ import org.eclipse.microprofile.lra.annotation.ParticipantStatus;
 import org.eclipse.microprofile.lra.annotation.Status;
 import org.eclipse.microprofile.lra.annotation.ws.rs.LRA;
 import org.eclipse.microprofile.lra.annotation.ws.rs.Leave;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.jboss.logging.Logger;
 
 @ApplicationScoped
 @Path("nested-participant")
 public class NestedParticipant {
 
-    private static final Logger log = LoggerFactory.getLogger(NestedParticipant.class);
+    private static final Logger log = Logger.getLogger(NestedParticipant.class);
 
     private final ConcurrentHashMap<String, AtomicInteger> compensateIdempotentCallCounts = new ConcurrentHashMap<>();
     private final Set<String> compensateIdempotentWorkDone = ConcurrentHashMap.newKeySet();
@@ -65,7 +64,7 @@ public class NestedParticipant {
     public Response compensate(@HeaderParam(LRA.LRA_HTTP_CONTEXT_HEADER) URI lraId,
             @HeaderParam(LRA.LRA_HTTP_PARENT_CONTEXT_HEADER) URI parentId) {
         totalCallbackCounts.computeIfAbsent(LRAConstants.getLRAUid(lraId), k -> new AtomicInteger()).incrementAndGet();
-        log.info("NESTED COMPENSATE lraId={} parentId={}", lraId, parentId);
+        log.infof("NESTED COMPENSATE lraId=%s parentId=%s", lraId, parentId);
         return Response.ok(ParticipantStatus.Compensated.name()).build();
     }
 
@@ -77,7 +76,7 @@ public class NestedParticipant {
         String uid = LRAConstants.getLRAUid(lraId);
         int n = compensateIdempotentCallCounts.computeIfAbsent(uid, k -> new AtomicInteger()).incrementAndGet();
         boolean first = compensateIdempotentWorkDone.add(uid);
-        log.info("NESTED COMPENSATE-IDEMPOTENT lraId={} parentId={} call#{} first={}", lraId, parentId, n, first);
+        log.infof("NESTED COMPENSATE-IDEMPOTENT lraId=%s parentId=%s call#%s first=%s", lraId, parentId, n, first);
         return Response.ok(ParticipantStatus.Compensated.name()).build();
     }
 
@@ -89,7 +88,7 @@ public class NestedParticipant {
         String uid = LRAConstants.getLRAUid(lraId);
         int n = asyncCompensateCallCounts.computeIfAbsent(uid, k -> new AtomicInteger()).incrementAndGet();
         asyncCompensateCalled.add(uid);
-        log.info("NESTED COMPENSATE-ASYNC lraId={} parentId={} call#{}", lraId, parentId, n);
+        log.infof("NESTED COMPENSATE-ASYNC lraId=%s parentId=%s call#%s", lraId, parentId, n);
         return Response.accepted().build();
     }
 
@@ -98,7 +97,7 @@ public class NestedParticipant {
     @Path("compensate-fail")
     public Response compensateFail(@HeaderParam(LRA.LRA_HTTP_CONTEXT_HEADER) URI lraId,
             @HeaderParam(LRA.LRA_HTTP_PARENT_CONTEXT_HEADER) URI parentId) {
-        log.info("NESTED COMPENSATE-FAIL lraId={} parentId={}", lraId, parentId);
+        log.infof("NESTED COMPENSATE-FAIL lraId=%s parentId=%s", lraId, parentId);
         return Response.status(Response.Status.CONFLICT)
                 .entity(ParticipantStatus.FailedToCompensate.name())
                 .build();
@@ -111,10 +110,10 @@ public class NestedParticipant {
         String uid = LRAConstants.getLRAUid(lraId);
         int call = compensateUnreachableCallCounts.computeIfAbsent(uid, k -> new AtomicInteger()).incrementAndGet();
         if (call == 1) {
-            log.warn("NESTED COMPENSATE-UNREACHABLE lraId={} simulating crash on first call", lraId);
+            log.warnf("NESTED COMPENSATE-UNREACHABLE lraId=%s simulating crash on first call", lraId);
             return Response.status(503).build();
         }
-        log.info("NESTED COMPENSATE-UNREACHABLE lraId={} recovered on call#{}", lraId, call);
+        log.infof("NESTED COMPENSATE-UNREACHABLE lraId=%s recovered on call#%s", lraId, call);
         return Response.ok(ParticipantStatus.Compensated.name()).build();
     }
 
@@ -124,7 +123,7 @@ public class NestedParticipant {
     public Response complete(@HeaderParam(LRA.LRA_HTTP_CONTEXT_HEADER) URI lraId,
             @HeaderParam(LRA.LRA_HTTP_PARENT_CONTEXT_HEADER) URI parentId) {
         totalCallbackCounts.computeIfAbsent(LRAConstants.getLRAUid(lraId), k -> new AtomicInteger()).incrementAndGet();
-        log.info("NESTED COMPLETE lraId={} parentId={}", lraId, parentId);
+        log.infof("NESTED COMPLETE lraId=%s parentId=%s", lraId, parentId);
         return Response.ok(ParticipantStatus.Completed.name()).build();
     }
 
@@ -136,7 +135,7 @@ public class NestedParticipant {
         String uid = LRAConstants.getLRAUid(lraId);
         int n = completeIdempotentCallCounts.computeIfAbsent(uid, k -> new AtomicInteger()).incrementAndGet();
         boolean first = completeIdempotentWorkDone.add(uid);
-        log.info("NESTED COMPLETE-IDEMPOTENT lraId={} parentId={} call#{} first={}", lraId, parentId, n, first);
+        log.infof("NESTED COMPLETE-IDEMPOTENT lraId=%s parentId=%s call#%s first=%s", lraId, parentId, n, first);
         return Response.ok(ParticipantStatus.Completed.name()).build();
     }
 
@@ -148,7 +147,7 @@ public class NestedParticipant {
         String uid = LRAConstants.getLRAUid(lraId);
         int n = asyncCompleteCallCounts.computeIfAbsent(uid, k -> new AtomicInteger()).incrementAndGet();
         asyncCompleteCalled.add(uid);
-        log.info("NESTED COMPLETE-ASYNC lraId={} parentId={} call#{}", lraId, parentId, n);
+        log.infof("NESTED COMPLETE-ASYNC lraId=%s parentId=%s call#%s", lraId, parentId, n);
         return Response.accepted().build();
     }
 
@@ -157,7 +156,7 @@ public class NestedParticipant {
     @Path("complete-fail")
     public Response completeFail(@HeaderParam(LRA.LRA_HTTP_CONTEXT_HEADER) URI lraId,
             @HeaderParam(LRA.LRA_HTTP_PARENT_CONTEXT_HEADER) URI parentId) {
-        log.info("NESTED COMPLETE-FAIL lraId={} parentId={}", lraId, parentId);
+        log.infof("NESTED COMPLETE-FAIL lraId=%s parentId=%s", lraId, parentId);
         return Response.status(Response.Status.CONFLICT)
                 .entity(ParticipantStatus.FailedToComplete.name())
                 .build();
@@ -170,10 +169,10 @@ public class NestedParticipant {
         String uid = LRAConstants.getLRAUid(lraId);
         int call = completeUnreachableCallCounts.computeIfAbsent(uid, k -> new AtomicInteger()).incrementAndGet();
         if (call == 1) {
-            log.warn("NESTED COMPLETE-UNREACHABLE lraId={} simulating crash on first call", lraId);
+            log.warnf("NESTED COMPLETE-UNREACHABLE lraId=%s simulating crash on first call", lraId);
             return Response.status(503).build();
         }
-        log.info("NESTED COMPLETE-UNREACHABLE lraId={} recovered on call#{}", lraId, call);
+        log.infof("NESTED COMPLETE-UNREACHABLE lraId=%s recovered on call#%s", lraId, call);
         return Response.ok(ParticipantStatus.Completed.name()).build();
     }
 
@@ -186,7 +185,7 @@ public class NestedParticipant {
         ParticipantStatus ps = asyncCompensateCalled.contains(uid)
                 ? ParticipantStatus.Compensated
                 : ParticipantStatus.Active;
-        log.info("NESTED STATUS-FOR-ASYNC lraId={} call#{} → {}", lraId, n, ps);
+        log.infof("NESTED STATUS-FOR-ASYNC lraId=%s call#%s → %s", lraId, n, ps);
         return Response.ok(ps.name()).build();
     }
 
@@ -199,7 +198,7 @@ public class NestedParticipant {
         ParticipantStatus ps = asyncCompleteCalled.contains(uid)
                 ? ParticipantStatus.Completed
                 : ParticipantStatus.Active;
-        log.info("NESTED STATUS-FOR-ASYNC-COMPLETE lraId={} call#{} → {}", lraId, n, ps);
+        log.infof("NESTED STATUS-FOR-ASYNC-COMPLETE lraId=%s call#%s → %s", lraId, n, ps);
         return Response.ok(ps.name()).build();
     }
 
@@ -212,7 +211,7 @@ public class NestedParticipant {
         ParticipantStatus ps = asyncCompensateCalled.contains(uid)
                 ? ParticipantStatus.FailedToCompensate
                 : ParticipantStatus.Active;
-        log.info("NESTED STATUS-FOR-FORGET-COMPENSATE lraId={} call#{} → {}", lraId, n, ps);
+        log.infof("NESTED STATUS-FOR-FORGET-COMPENSATE lraId=%s call#%s → %s", lraId, n, ps);
         return Response.ok(ps.name()).build();
     }
 
@@ -225,7 +224,7 @@ public class NestedParticipant {
         ParticipantStatus ps = asyncCompleteCalled.contains(uid)
                 ? ParticipantStatus.FailedToComplete
                 : ParticipantStatus.Active;
-        log.info("NESTED STATUS-FOR-FORGET-COMPLETE lraId={} call#{} → {}", lraId, n, ps);
+        log.infof("NESTED STATUS-FOR-FORGET-COMPLETE lraId=%s call#%s → %s", lraId, n, ps);
         return Response.ok(ps.name()).build();
     }
 
@@ -236,7 +235,7 @@ public class NestedParticipant {
         String uid = LRAConstants.getLRAUid(lraId);
         int n = statusGoneCallCounts.computeIfAbsent(uid, k -> new AtomicInteger()).incrementAndGet();
         boolean called = asyncCompensateCalled.contains(uid) || asyncCompleteCalled.contains(uid);
-        log.info("NESTED STATUS-GONE lraId={} call#{} asyncCalled={}", lraId, n, called);
+        log.infof("NESTED STATUS-GONE lraId=%s call#%s asyncCalled=%s", lraId, n, called);
         if (called) {
             return Response.status(Response.Status.GONE).build();
         }
@@ -258,7 +257,7 @@ public class NestedParticipant {
                     .incrementAndGet();
             ps = postN == 1 ? ParticipantStatus.Compensating : ParticipantStatus.Compensated;
         }
-        log.info("NESTED STATUS-INTERMEDIATE-COMPENSATE lraId={} call#{} → {}", lraId, n, ps);
+        log.infof("NESTED STATUS-INTERMEDIATE-COMPENSATE lraId=%s call#%s → %s", lraId, n, ps);
         return Response.ok(ps.name()).build();
     }
 
@@ -277,7 +276,7 @@ public class NestedParticipant {
                     .incrementAndGet();
             ps = postN == 1 ? ParticipantStatus.Completing : ParticipantStatus.Completed;
         }
-        log.info("NESTED STATUS-INTERMEDIATE-COMPLETE lraId={} call#{} → {}", lraId, n, ps);
+        log.infof("NESTED STATUS-INTERMEDIATE-COMPLETE lraId=%s call#%s → %s", lraId, n, ps);
         return Response.ok(ps.name()).build();
     }
 
@@ -288,7 +287,7 @@ public class NestedParticipant {
             @HeaderParam(LRA.LRA_HTTP_PARENT_CONTEXT_HEADER) URI parentId) {
         String uid = LRAConstants.getLRAUid(lraId);
         int n = forgetCallCounts.computeIfAbsent(uid, k -> new AtomicInteger()).incrementAndGet();
-        log.info("NESTED FORGET lraId={} parentId={} call#{}", lraId, parentId, n);
+        log.infof("NESTED FORGET lraId=%s parentId=%s call#%s", lraId, parentId, n);
         return Response.ok().build();
     }
 
@@ -304,7 +303,7 @@ public class NestedParticipant {
         String statusName = status != null ? status.name() : "null";
         afterReceivedStatus.put(uid, statusName);
         boolean first = afterWorkDone.add(uid);
-        log.info("NESTED AFTER-LRA endedLraId={} parentId={} status={} call#{} firstWork={}",
+        log.infof("NESTED AFTER-LRA endedLraId=%s parentId=%s status=%s call#%s firstWork=%s",
                 endedLraId, parentId, statusName, n, first);
         return Response.ok().build();
     }
@@ -321,10 +320,10 @@ public class NestedParticipant {
         String statusName = status != null ? status.name() : "null";
         afterReceivedStatus.put(uid, statusName);
         boolean first = afterWorkDone.add(uid);
-        log.info("NESTED AFTER-LRA-IDEMPOTENT endedLraId={} parentId={} status={} call#{} firstWork={}",
+        log.infof("NESTED AFTER-LRA-IDEMPOTENT endedLraId=%s parentId=%s status=%s call#%s firstWork=%s",
                 endedLraId, parentId, statusName, n, first);
         if (n == 1) {
-            log.warn("NESTED AFTER-LRA-IDEMPOTENT endedLraId={} returning 500 to trigger retry", endedLraId);
+            log.warnf("NESTED AFTER-LRA-IDEMPOTENT endedLraId=%s returning 500 to trigger retry", endedLraId);
             return Response.serverError().build();
         }
         return Response.ok().build();
@@ -334,7 +333,7 @@ public class NestedParticipant {
     @PUT
     @Path("leave")
     public Response leave(@HeaderParam(LRA.LRA_HTTP_CONTEXT_HEADER) URI lraId) {
-        log.info("NESTED LEAVE called lraId={} — filter will remove this participant", lraId);
+        log.infof("NESTED LEAVE called lraId=%s — filter will remove this participant", lraId);
         return Response.ok().build();
     }
 
