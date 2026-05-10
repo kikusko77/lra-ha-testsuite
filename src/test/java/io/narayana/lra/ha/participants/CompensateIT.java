@@ -24,9 +24,7 @@ class CompensateIT extends TestBase {
 
     private static final Logger log = Logger.getLogger(CompensateIT.class);
 
-    private static final long CRASH_RECOVERY_WAIT_S = 15;
-    private static final long LRA_GONE_WAIT_MS = 30_000;
-    private static final long LRA_GONE_FAST_MS = 10_000;
+    private static final long CRASH_RECOVERY_TIMEOUT_S = 15;
     private static final long RECOVERY_SCAN_WAIT_MS = 20_000;
 
     /**
@@ -38,7 +36,7 @@ class CompensateIT extends TestBase {
         log.info("CompensateIT: testIdempotentCompensate_coordinatorCrashDuringCleanup");
         URI lra = prepareCompensateLra("idempotent-during-cleanup", COMPENSATE_IDEMPOTENT);
 
-        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_DURING_CLEANUP.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_DURING_CLEANUP.name());
 
         try {
             lraClient.cancelLRA(lra);
@@ -47,10 +45,10 @@ class CompensateIT extends TestBase {
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
-        ensureCoordinatorAvailability(CRASH_RECOVERY_WAIT_S);
-        waitForNoActiveLra(lra, LRA_GONE_WAIT_MS);
+        ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
+        waitForNoActiveLra(lra, LRA_GONE_AFTER_RECOVERY_MS);
 
-        int callCount = getIdempotentCallCount(lra);
+        int callCount = getCallCount(lra);
         int workDone = getIdempotentWorkDone(lra);
 
         log.infof("After crash recovery: callCount=%s, workDone=%s", callCount, workDone);
@@ -67,7 +65,7 @@ class CompensateIT extends TestBase {
         log.info("CompensateIT: testIdempotentCompensate_coordinatorCrashAfterSave");
         URI lra = prepareCompensateLra("idempotent-after-save", COMPENSATE_IDEMPOTENT);
 
-        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_AFTER_SAVE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_SAVE.name());
 
         try {
             lraClient.cancelLRA(lra);
@@ -78,8 +76,8 @@ class CompensateIT extends TestBase {
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
-        ensureCoordinatorAvailability(CRASH_RECOVERY_WAIT_S);
-        waitForNoActiveLra(lra, LRA_GONE_WAIT_MS);
+        ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
+        waitForNoActiveLra(lra, LRA_GONE_AFTER_RECOVERY_MS);
 
         assertEquals(1, getIdempotentWorkDone(lra),
                 "Side effect must be performed exactly once after crash-and-recovery");
@@ -94,7 +92,7 @@ class CompensateIT extends TestBase {
         log.info("CompensateIT: testIdempotentCompensate_coordinatorCrashBeforeSave");
         URI lra = prepareCompensateLra("idempotent-before-save", COMPENSATE_IDEMPOTENT);
 
-        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_BEFORE_SAVE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_BEFORE_SAVE.name());
 
         try {
             lraClient.cancelLRA(lra);
@@ -103,8 +101,8 @@ class CompensateIT extends TestBase {
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
-        ensureCoordinatorAvailability(CRASH_RECOVERY_WAIT_S);
-        waitForNoActiveLra(lra, LRA_GONE_WAIT_MS);
+        ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
+        waitForNoActiveLra(lra, LRA_GONE_AFTER_RECOVERY_MS);
 
         assertEquals(1, getIdempotentWorkDone(lra),
                 "Side effect must be performed once after LRA is eventually cancelled via timeout");
@@ -113,12 +111,12 @@ class CompensateIT extends TestBase {
     @Test
     void testAsyncCompensate_withStatus_coordinatorCrashAfterSave() {
         log.info("CompensateIT: testAsyncCompensate_withStatus_coordinatorCrashAfterSave");
-        URI lra = prepareCompensateLraAsync(
+        URI lra = prepareCompensateLraWithStatus(
                 "async-after-save",
                 COMPENSATE_ASYNC,
                 STATUS_FOR_ASYNC);
 
-        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_AFTER_SAVE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_SAVE.name());
 
         try {
             lraClient.cancelLRA(lra);
@@ -127,8 +125,8 @@ class CompensateIT extends TestBase {
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
-        ensureCoordinatorAvailability(CRASH_RECOVERY_WAIT_S);
-        waitForNoActiveLra(lra, LRA_GONE_WAIT_MS);
+        ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
+        waitForNoActiveLra(lra, LRA_GONE_AFTER_RECOVERY_MS);
         assertNoActiveLras();
     }
 
@@ -139,12 +137,12 @@ class CompensateIT extends TestBase {
     @Test
     void testAsyncCompensate_duplicateCallViaProxyFailover() {
         log.info("CompensateIT: testAsyncCompensate_duplicateCallViaProxyFailover");
-        URI lra = prepareCompensateLraAsync(
+        URI lra = prepareCompensateLraWithStatus(
                 "async-duplicate",
                 COMPENSATE_ASYNC,
                 STATUS_FOR_ASYNC);
 
-        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_DURING_CLEANUP.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_DURING_CLEANUP.name());
 
         try {
             lraClient.cancelLRA(lra);
@@ -153,8 +151,8 @@ class CompensateIT extends TestBase {
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
-        ensureCoordinatorAvailability(CRASH_RECOVERY_WAIT_S);
-        waitForNoActiveLra(lra, LRA_GONE_WAIT_MS);
+        ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
+        waitForNoActiveLra(lra, LRA_GONE_AFTER_RECOVERY_MS);
         assertNoActiveLras();
 
         int compensateCalls = getAsyncCallCount(lra);
@@ -175,14 +173,14 @@ class CompensateIT extends TestBase {
     @Test
     void testAsyncCompensate_withStatus_crashAfterReceivingResponse() {
         log.info("CompensateIT: testAsyncCompensate_withStatus_crashAfterReceivingResponse");
-        waitForAllCoordinators(CRASH_RECOVERY_WAIT_S);
+        waitForAllCoordinators(CRASH_RECOVERY_TIMEOUT_S);
         resetProxyRouting();
-        URI lra = prepareCompensateLraAsync(
+        URI lra = prepareCompensateLraWithStatus(
                 "async-after-response",
                 COMPENSATE_ASYNC,
                 STATUS_FOR_ASYNC);
 
-        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_AFTER_PARTICIPANT_RESPONSE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_PARTICIPANT_RESPONSE.name());
 
         try {
             lraClient.cancelLRA(lra);
@@ -191,8 +189,8 @@ class CompensateIT extends TestBase {
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
-        ensureCoordinatorAvailability(CRASH_RECOVERY_WAIT_S);
-        waitForNoActiveLra(lra, LRA_GONE_WAIT_MS);
+        ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
+        waitForNoActiveLra(lra, LRA_GONE_AFTER_RECOVERY_MS);
         assertNoActiveLras();
 
         int compensateCalls = getAsyncCallCount(lra);
@@ -217,7 +215,7 @@ class CompensateIT extends TestBase {
         log.info("CompensateIT: testIdempotentCompensate_crashAfterReceivingResponse");
         URI lra = prepareCompensateLra("crash-after-response", COMPENSATE_IDEMPOTENT);
 
-        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_AFTER_PARTICIPANT_RESPONSE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_PARTICIPANT_RESPONSE.name());
 
         try {
             lraClient.cancelLRA(lra);
@@ -227,10 +225,10 @@ class CompensateIT extends TestBase {
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
-        ensureCoordinatorAvailability(CRASH_RECOVERY_WAIT_S);
-        waitForNoActiveLra(lra, LRA_GONE_WAIT_MS);
+        ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
+        waitForNoActiveLra(lra, LRA_GONE_AFTER_RECOVERY_MS);
 
-        int callCount = getIdempotentCallCount(lra);
+        int callCount = getCallCount(lra);
         int workDone = getIdempotentWorkDone(lra);
 
         log.infof("After crash recovery: callCount=%s, workDone=%s", callCount, workDone);
@@ -272,7 +270,7 @@ class CompensateIT extends TestBase {
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
-        waitForNoActiveLra(lra, LRA_GONE_FAST_MS);
+        waitForNoActiveLra(lra, LRA_GONE_HAPPY_PATH_MS);
 
         List<String> activeIds = getActiveIds();
         String targetUid = LRAConstants.getLRAUid(lra);

@@ -21,7 +21,7 @@ class EndLraIT extends TestBase {
         log.info("Starting testCancelLraBeforeSave");
         URI lra = prepareLraWithParticipant("cancel-before");
 
-        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_BEFORE_SAVE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_BEFORE_SAVE.name());
 
         assertDoesNotThrow(() -> lraClient.cancelLRA(lra));
 
@@ -38,7 +38,7 @@ class EndLraIT extends TestBase {
         log.info("Starting testCancelLraAfterSave");
         URI lra = prepareLraWithParticipant("cancel-after");
 
-        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_AFTER_SAVE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_SAVE.name());
 
         try {
             lraClient.cancelLRA(lra);
@@ -62,7 +62,7 @@ class EndLraIT extends TestBase {
         log.info("Starting testCloseLraBeforeSave");
         URI lra = prepareLraWithParticipant("close-before");
 
-        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_BEFORE_SAVE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_BEFORE_SAVE.name());
 
         assertDoesNotThrow(() -> lraClient.closeLRA(lra));
 
@@ -79,7 +79,7 @@ class EndLraIT extends TestBase {
         log.info("Starting testCloseLraAfterSave");
         URI lra = prepareLraWithParticipant("close-after");
 
-        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_AFTER_SAVE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_SAVE.name());
 
         try {
             lraClient.closeLRA(lra);
@@ -103,7 +103,7 @@ class EndLraIT extends TestBase {
         log.info("Starting testCancelLraDuringCleanup");
         URI lra = prepareLraWithParticipant("cancel-during-cleanup");
 
-        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_DURING_CLEANUP.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_DURING_CLEANUP.name());
 
         try {
             lraClient.cancelLRA(lra);
@@ -128,7 +128,7 @@ class EndLraIT extends TestBase {
         log.info("Starting testCancelLraAfterCleanup");
         URI lra = prepareLraWithParticipant("cancel-after-cleanup");
 
-        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_AFTER_CLEANUP.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_CLEANUP.name());
 
         try {
             lraClient.cancelLRA(lra);
@@ -149,7 +149,7 @@ class EndLraIT extends TestBase {
         log.info("Starting testCloseLraDuringCleanup");
         URI lra = prepareLraWithParticipant("close-during-cleanup");
 
-        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_DURING_CLEANUP.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_DURING_CLEANUP.name());
 
         try {
             lraClient.closeLRA(lra);
@@ -174,7 +174,7 @@ class EndLraIT extends TestBase {
         log.info("Starting testCloseLraAfterCleanup");
         URI lra = prepareLraWithParticipant("close-after-cleanup");
 
-        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_AFTER_CLEANUP.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_CLEANUP.name());
 
         try {
             lraClient.closeLRA(lra);

@@ -21,7 +21,7 @@ class ForgetIT extends TestBase {
     }
 
     private static final Logger log = Logger.getLogger(ForgetIT.class);
-    private static final long CRASH_RECOVERY_WAIT_S = 30;
+    private static final long CRASH_RECOVERY_TIMEOUT_S = 30;
     private static final long RECOVERY_SCAN_WAIT_MS = 120_000;
     private static final long CRASH_SCAN_WAIT_MS = 180_000;
 
@@ -32,11 +32,11 @@ class ForgetIT extends TestBase {
     @Test
     void testForgetAfterFailedCompensate_coordinatorCrashAfterSave() {
         log.info("ForgetIT: testForgetAfterFailedCompensate_coordinatorCrashAfterSave");
-        URI lra = prepareCompensateLraAsyncWithForget(
+        URI lra = prepareCompensateLraWithStatusAndForget(
                 "forget-compensate-after-save",
                 STATUS_FOR_FORGET_COMPENSATE);
 
-        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_AFTER_SAVE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_SAVE.name());
 
         try {
             lraClient.cancelLRA(lra);
@@ -45,7 +45,7 @@ class ForgetIT extends TestBase {
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
-        ensureCoordinatorAvailability(CRASH_RECOVERY_WAIT_S);
+        ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
         waitForFailedAsyncForget(lra, CRASH_SCAN_WAIT_MS);
 
         assertEquals(1, getAsyncCallCount(lra), "Recovery should call async @Compensate exactly once");
@@ -60,11 +60,11 @@ class ForgetIT extends TestBase {
     @Test
     void testForgetAfterFailedCompensate_duplicateCallViaProxyFailover() {
         log.info("ForgetIT: testForgetAfterFailedCompensate_duplicateCallViaProxyFailover");
-        URI lra = prepareCompensateLraAsyncWithForget(
+        URI lra = prepareCompensateLraWithStatusAndForget(
                 "forget-compensate-duplicate",
                 STATUS_FOR_FORGET_COMPENSATE);
 
-        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_DURING_CLEANUP.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_DURING_CLEANUP.name());
 
         try {
             lraClient.cancelLRA(lra);
@@ -73,7 +73,7 @@ class ForgetIT extends TestBase {
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
-        ensureCoordinatorAvailability(CRASH_RECOVERY_WAIT_S);
+        ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
         waitForFailedAsyncForget(lra, CRASH_SCAN_WAIT_MS);
 
         assertEquals(1, getAsyncCallCount(lra),
@@ -89,11 +89,11 @@ class ForgetIT extends TestBase {
     @Test
     void testForgetAfterFailedComplete_coordinatorCrashAfterSave() {
         log.info("ForgetIT: testForgetAfterFailedComplete_coordinatorCrashAfterSave");
-        URI lra = prepareCompleteLraAsyncWithForget(
+        URI lra = prepareCompleteLraWithStatusAndForget(
                 "forget-complete-after-save",
                 STATUS_FOR_FORGET_COMPLETE);
 
-        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_AFTER_SAVE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_SAVE.name());
 
         try {
             lraClient.closeLRA(lra);
@@ -102,7 +102,7 @@ class ForgetIT extends TestBase {
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
-        ensureCoordinatorAvailability(CRASH_RECOVERY_WAIT_S);
+        ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
         waitForFailedAsyncForget(lra, CRASH_SCAN_WAIT_MS);
 
         assertEquals(1, getAsyncCallCount(lra), "Recovery should call async @Complete exactly once");
@@ -117,11 +117,11 @@ class ForgetIT extends TestBase {
     @Test
     void testForgetAfterFailedComplete_duplicateCallViaProxyFailover() {
         log.info("ForgetIT: testForgetAfterFailedComplete_duplicateCallViaProxyFailover");
-        URI lra = prepareCompleteLraAsyncWithForget(
+        URI lra = prepareCompleteLraWithStatusAndForget(
                 "forget-complete-duplicate",
                 STATUS_FOR_FORGET_COMPLETE);
 
-        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_DURING_CLEANUP.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_DURING_CLEANUP.name());
 
         try {
             lraClient.closeLRA(lra);
@@ -130,7 +130,7 @@ class ForgetIT extends TestBase {
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
-        ensureCoordinatorAvailability(CRASH_RECOVERY_WAIT_S);
+        ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
         waitForFailedAsyncForget(lra, CRASH_SCAN_WAIT_MS);
 
         assertEquals(1, getAsyncCallCount(lra),

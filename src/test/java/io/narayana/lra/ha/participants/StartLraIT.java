@@ -2,6 +2,7 @@ package io.narayana.lra.ha.participants;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import io.naryana.lra.ha.Participant;
 import io.quarkus.test.junit.QuarkusTest;
 import java.net.URI;
 import java.time.temporal.ChronoUnit;
@@ -18,10 +19,10 @@ class StartLraIT extends TestBase {
     void testStartLraDuplicates() {
         log.info("StartLraIT: testStartLraDuplicates");
         injectResetAll();
-        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.START.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.START.name());
         URI lra = lraClient.startLRA(
                 null,
-                "io.naryana.lra.ha.LRAParticipant#bookGame",
+                Participant.class.getName() + "#start-duplicates",
                 30L,
                 ChronoUnit.SECONDS,
                 true);

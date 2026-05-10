@@ -14,6 +14,7 @@ import jakarta.ws.rs.client.ClientBuilder;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriBuilder;
+
 import java.net.URI;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
@@ -21,6 +22,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionTimeoutException;
 import org.jboss.logging.Logger;
@@ -36,6 +38,9 @@ public abstract class TestBase implements ParticipantEndpoints {
 
     private static final Logger LOG = Logger.getLogger(TestBase.class);
     private static final ObjectMapper JSON = new ObjectMapper();
+
+    protected static final long LRA_GONE_HAPPY_PATH_MS = 10_000;
+    protected static final long LRA_GONE_AFTER_RECOVERY_MS = 30_000;
 
     @Inject
     NarayanaLRAClient lraClient;
@@ -97,10 +102,6 @@ public abstract class TestBase implements ParticipantEndpoints {
                 .build();
     }
 
-    // -------------------------------------------------------------------------
-    // Coordinator helpers
-    // -------------------------------------------------------------------------
-
     protected List<String> getActiveIds() {
         for (URI base : coordinatorUris) {
             Response r = null;
@@ -151,18 +152,11 @@ public abstract class TestBase implements ParticipantEndpoints {
         return new ArrayList<>(all);
     }
 
-    protected boolean isLraActiveAnywhere(URI lraId) {
-        String targetUid = LRAConstants.getLRAUid(lraId);
-        return getAllActiveIdsAcrossCoordinators().stream()
-                .map(LRAConstants::getLRAUid)
-                .anyMatch(targetUid::equals);
-    }
-
     protected void enableFailurePoint(URI coordinatorBase, String point) {
         callInject(coordinatorBase, point, "enable");
     }
 
-    protected void injectDisable(URI coordinatorBase, String point) {
+    protected void disableFailurePoint(URI coordinatorBase, String point) {
         callInject(coordinatorBase, point, "disable");
     }
 
@@ -272,12 +266,12 @@ public abstract class TestBase implements ParticipantEndpoints {
         }
     }
 
-    protected void waitForIdempotentCallCount(URI lraId, int expected, long timeoutMs) {
+    protected void waitForCallCount(URI lraId, int expected, long timeoutMs) {
         try {
-            Awaitility.await("waiting for idempotent call count >= " + expected)
+            Awaitility.await("waiting for call count >= " + expected)
                     .atMost(Duration.ofMillis(timeoutMs))
                     .pollInterval(Duration.ofMillis(200))
-                    .until(() -> getIdempotentCallCount(lraId) >= expected);
+                    .until(() -> getCallCount(lraId) >= expected);
         } catch (ConditionTimeoutException ignored) {
         }
     }
@@ -379,11 +373,11 @@ public abstract class TestBase implements ParticipantEndpoints {
         return prepareLra(participantClientId(scenario), compensatePath, COMPLETE);
     }
 
-    protected URI prepareCompensateLraAsync(String scenario, String compensatePath, String statusPath) {
+    protected URI prepareCompensateLraWithStatus(String scenario, String compensatePath, String statusPath) {
         return prepareLra(participantClientId(scenario), compensatePath, COMPLETE, statusPath);
     }
 
-    protected URI prepareCompensateLraAsyncWithForget(String scenario, String statusPath) {
+    protected URI prepareCompensateLraWithStatusAndForget(String scenario, String statusPath) {
         return prepareLra(
                 participantClientId(scenario),
                 COMPENSATE_ASYNC,
@@ -396,11 +390,11 @@ public abstract class TestBase implements ParticipantEndpoints {
         return prepareLra(participantClientId(scenario), COMPENSATE, completePath);
     }
 
-    protected URI prepareCompleteLraAsync(String scenario, String completePath, String statusPath) {
+    protected URI prepareCompleteLraWithStatus(String scenario, String completePath, String statusPath) {
         return prepareLra(participantClientId(scenario), COMPENSATE, completePath, statusPath);
     }
 
-    protected URI prepareCompleteLraAsyncWithForget(String scenario, String statusPath) {
+    protected URI prepareCompleteLraWithStatusAndForget(String scenario, String statusPath) {
         return prepareLra(
                 participantClientId(scenario),
                 COMPENSATE,
@@ -428,8 +422,8 @@ public abstract class TestBase implements ParticipantEndpoints {
                 + ",<" + complete.toASCIIString() + ">; rel=\"complete\"; type=\"text/plain\"";
     }
 
-    protected int getIdempotentCallCount(URI lraId) {
-        return client.target(participantUri(IDEMPOTENT_CALL_COUNT))
+    protected int getCallCount(URI lraId) {
+        return client.target(participantUri(CALL_COUNT))
                 .queryParam("lraId", lraId.toASCIIString())
                 .request().get(Integer.class);
     }
@@ -500,18 +494,6 @@ public abstract class TestBase implements ParticipantEndpoints {
                 .request().get(Integer.class);
     }
 
-    protected int getAfterIdempotentCallCount(URI lraId) {
-        return client.target(participantUri(AFTER_IDEMPOTENT_CALL_COUNT))
-                .queryParam("lraId", lraId.toASCIIString())
-                .request().get(Integer.class);
-    }
-
-    protected int getAfterWorkDone(URI lraId) {
-        return client.target(participantUri(AFTER_WORK_DONE))
-                .queryParam("lraId", lraId.toASCIIString())
-                .request().get(Integer.class);
-    }
-
     protected void waitForAfterCallCount(URI lraId, int expected, long timeoutMs) {
         try {
             Awaitility.await("waiting for @AfterLRA call count >= " + expected)
@@ -522,11 +504,10 @@ public abstract class TestBase implements ParticipantEndpoints {
         }
     }
 
-    protected URI prepareLraWithAfterLra(
+    protected URI prepareLraWithAfter(
             String clientIdPrefix,
             String compensatePath,
-            String completePath,
-            String afterPath) {
+            String completePath) {
         injectResetAll();
 
         URI lra = startLra(clientIdPrefix);
@@ -534,7 +515,7 @@ public abstract class TestBase implements ParticipantEndpoints {
 
         URI compensate = participantUri(compensatePath);
         URI complete = participantUri(completePath);
-        URI after = participantUri(afterPath);
+        URI after = participantUri(AFTER_LRA);
 
         URI recovery = lraClient.joinLRA(lra, 30L, compensate, complete, null, null, after, null,
                 new StringBuilder());
@@ -543,11 +524,6 @@ public abstract class TestBase implements ParticipantEndpoints {
                 compensate, complete, after, recovery);
         return lra;
     }
-
-    // -------------------------------------------------------------------------
-    // Nested LRA helpers — return the nested URI; the parent is added to the
-    // cleanup list so afterEach tears down the whole hierarchy.
-    // -------------------------------------------------------------------------
 
     protected URI startTopLra(String scenario) {
         URI parent = startLra(participantClientId(scenario) + "-parent");
@@ -588,18 +564,17 @@ public abstract class TestBase implements ParticipantEndpoints {
         return prepareLra(parent, participantClientId(scenario), compensatePath, completePath, forgetPath, statusPath);
     }
 
-    protected URI prepareNestedLraWithAfterLra(
+    protected URI prepareNestedLraWithAfter(
             URI parent,
             String scenario,
             String compensatePath,
-            String completePath,
-            String afterPath) {
+            String completePath) {
         URI nested = startLra(parent, participantClientId(scenario) + "-nested");
         lrasToAfterFinish.add(nested);
 
         URI compensate = participantUri(compensatePath);
         URI complete = participantUri(completePath);
-        URI after = participantUri(afterPath);
+        URI after = participantUri(AFTER_LRA);
 
         URI recovery = lraClient.joinLRA(nested, 30L, compensate, complete, null, null, after, null,
                 new StringBuilder());

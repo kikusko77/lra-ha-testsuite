@@ -22,10 +22,7 @@ class NestedStatusIT extends TestBase {
     }
 
     private static final Logger log = Logger.getLogger(NestedStatusIT.class);
-
-    private static final long LRA_GONE_FAST_MS = 10_000;
-    private static final long LRA_GONE_WAIT_MS = 30_000;
-    private static final long CRASH_RECOVERY_WAIT_S = 125;
+    private static final long CRASH_RECOVERY_TIMEOUT_S = 125;
 
     @Test
     void testAsyncCompensate_statusGone410_lraResolves() {
@@ -36,7 +33,7 @@ class NestedStatusIT extends TestBase {
 
         assertDoesNotThrow(() -> lraClient.cancelLRA(nested));
 
-        waitForNoActiveLra(nested, LRA_GONE_FAST_MS);
+        waitForNoActiveLra(nested, LRA_GONE_HAPPY_PATH_MS);
 
         int compensateCalls = getAsyncCompensateCallCount(nested);
         int statusCalls = getStatusGoneCallCount(nested);
@@ -56,7 +53,7 @@ class NestedStatusIT extends TestBase {
 
         assertDoesNotThrow(() -> lraClient.closeLRA(nested));
 
-        waitForNoActiveLra(nested, LRA_GONE_FAST_MS);
+        waitForNoActiveLra(nested, LRA_GONE_HAPPY_PATH_MS);
 
         int completeCalls = getAsyncCompleteCallCount(nested);
         int statusCalls = getStatusGoneCallCount(nested);
@@ -76,8 +73,8 @@ class NestedStatusIT extends TestBase {
 
         assertDoesNotThrow(() -> lraClient.cancelLRA(nested));
 
-        waitForStatusIntermediateCompensateCallCount(nested, 1, LRA_GONE_WAIT_MS);
-        waitForNoActiveLra(nested, LRA_GONE_FAST_MS);
+        waitForStatusIntermediateCompensateCallCount(nested, 1, LRA_GONE_AFTER_RECOVERY_MS);
+        waitForNoActiveLra(nested, LRA_GONE_HAPPY_PATH_MS);
 
         int compensateCalls = getAsyncCompensateCallCount(nested);
         int statusCalls = getStatusIntermediateCompensateCallCount(nested);
@@ -97,8 +94,8 @@ class NestedStatusIT extends TestBase {
 
         assertDoesNotThrow(() -> lraClient.closeLRA(nested));
 
-        waitForStatusIntermediateCompleteCallCount(nested, 1, LRA_GONE_WAIT_MS);
-        waitForNoActiveLra(nested, LRA_GONE_FAST_MS);
+        waitForStatusIntermediateCompleteCallCount(nested, 1, LRA_GONE_AFTER_RECOVERY_MS);
+        waitForNoActiveLra(nested, LRA_GONE_HAPPY_PATH_MS);
 
         int completeCalls = getAsyncCompleteCallCount(nested);
         int statusCalls = getStatusIntermediateCompleteCallCount(nested);
@@ -112,14 +109,14 @@ class NestedStatusIT extends TestBase {
     @Test
     void testAsyncCompensate_statusGone_coordinatorCrashAfterParticipantResponse() {
         log.info("NestedStatusIT: testAsyncCompensate_statusGone_coordinatorCrashAfterParticipantResponse");
-        waitForAllCoordinators(CRASH_RECOVERY_WAIT_S);
+        waitForAllCoordinators(CRASH_RECOVERY_TIMEOUT_S);
         resetProxyRouting();
 
         URI parent = startTopLra("nested-status-compensate-gone-crash");
         URI nested = prepareNestedLra(parent, "nested-status-compensate-gone-crash",
                 COMPENSATE_ASYNC_STATUS, COMPLETE, STATUS_GONE);
 
-        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_AFTER_PARTICIPANT_RESPONSE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_PARTICIPANT_RESPONSE.name());
 
         try {
             lraClient.cancelLRA(nested);
@@ -128,8 +125,8 @@ class NestedStatusIT extends TestBase {
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
-        ensureCoordinatorAvailability(CRASH_RECOVERY_WAIT_S);
-        waitForNoActiveLra(nested, LRA_GONE_WAIT_MS);
+        ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
+        waitForNoActiveLra(nested, LRA_GONE_AFTER_RECOVERY_MS);
 
         int compensateCalls = getAsyncCompensateCallCount(nested);
         int statusCalls = getStatusGoneCallCount(nested);
@@ -145,14 +142,14 @@ class NestedStatusIT extends TestBase {
     @Test
     void testAsyncComplete_intermediateStatus_coordinatorCrashAfterParticipantResponse() {
         log.info("NestedStatusIT: testAsyncComplete_intermediateStatus_coordinatorCrashAfterParticipantResponse");
-        waitForAllCoordinators(CRASH_RECOVERY_WAIT_S);
+        waitForAllCoordinators(CRASH_RECOVERY_TIMEOUT_S);
         resetProxyRouting();
 
         URI parent = startTopLra("nested-status-complete-intermediate-crash");
         URI nested = prepareNestedLra(parent, "nested-status-complete-intermediate-crash",
                 COMPENSATE, COMPLETE_ASYNC_STATUS, STATUS_INTERMEDIATE_COMPLETE);
 
-        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_AFTER_PARTICIPANT_RESPONSE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_PARTICIPANT_RESPONSE.name());
 
         try {
             lraClient.closeLRA(nested);
@@ -161,8 +158,8 @@ class NestedStatusIT extends TestBase {
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
-        ensureCoordinatorAvailability(CRASH_RECOVERY_WAIT_S);
-        waitForNoActiveLra(nested, LRA_GONE_WAIT_MS);
+        ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
+        waitForNoActiveLra(nested, LRA_GONE_AFTER_RECOVERY_MS);
 
         int completeCalls = getAsyncCompleteCallCount(nested);
         int statusCalls = getStatusIntermediateCompleteCallCount(nested);

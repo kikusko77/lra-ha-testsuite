@@ -25,9 +25,7 @@ class CompleteIT extends TestBase {
 
     private static final Logger log = Logger.getLogger(CompleteIT.class);
 
-    private static final long CRASH_RECOVERY_WAIT_S = 15;
-    private static final long LRA_GONE_WAIT_MS = 30_000;
-    private static final long LRA_GONE_FAST_MS = 10_000;
+    private static final long CRASH_RECOVERY_TIMEOUT_S = 15;
     private static final long RECOVERY_SCAN_WAIT_MS = 20_000;
 
     /**
@@ -39,7 +37,7 @@ class CompleteIT extends TestBase {
         log.info("CompleteIT: testIdempotentComplete_coordinatorCrashDuringCleanup");
         URI lra = prepareCompleteLra("complete-idempotent-during-cleanup", COMPLETE_IDEMPOTENT);
 
-        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_DURING_CLEANUP.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_DURING_CLEANUP.name());
 
         try {
             lraClient.closeLRA(lra);
@@ -48,10 +46,10 @@ class CompleteIT extends TestBase {
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
-        ensureCoordinatorAvailability(CRASH_RECOVERY_WAIT_S);
-        waitForNoActiveLra(lra, LRA_GONE_WAIT_MS);
+        ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
+        waitForNoActiveLra(lra, LRA_GONE_AFTER_RECOVERY_MS);
 
-        int callCount = getIdempotentCallCount(lra);
+        int callCount = getCallCount(lra);
         int workDone = getIdempotentWorkDone(lra);
 
         log.infof("After crash recovery: callCount=%s, workDone=%s", callCount, workDone);
@@ -65,7 +63,7 @@ class CompleteIT extends TestBase {
         log.info("CompleteIT: testIdempotentComplete_coordinatorCrashAfterSave");
         URI lra = prepareCompleteLra("complete-idempotent-after-save", COMPLETE_IDEMPOTENT);
 
-        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_AFTER_SAVE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_SAVE.name());
 
         try {
             lraClient.closeLRA(lra);
@@ -76,8 +74,8 @@ class CompleteIT extends TestBase {
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
-        ensureCoordinatorAvailability(CRASH_RECOVERY_WAIT_S);
-        waitForNoActiveLra(lra, LRA_GONE_WAIT_MS);
+        ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
+        waitForNoActiveLra(lra, LRA_GONE_AFTER_RECOVERY_MS);
 
         assertEquals(1, getIdempotentWorkDone(lra),
                 "Side effect must be performed exactly once after crash-and-recovery");
@@ -92,7 +90,7 @@ class CompleteIT extends TestBase {
         log.info("CompleteIT: testIdempotentComplete_coordinatorCrashBeforeSave");
         URI lra = prepareCompleteLra("complete-idempotent-before-save", COMPLETE_IDEMPOTENT);
 
-        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_BEFORE_SAVE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_BEFORE_SAVE.name());
 
         try {
             lraClient.closeLRA(lra);
@@ -101,9 +99,9 @@ class CompleteIT extends TestBase {
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
-        ensureCoordinatorAvailability(CRASH_RECOVERY_WAIT_S);
-        waitForNoActiveLra(lra, LRA_GONE_WAIT_MS);
-        waitForIdempotentCallCount(lra, 1, LRA_GONE_WAIT_MS);
+        ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
+        waitForNoActiveLra(lra, LRA_GONE_AFTER_RECOVERY_MS);
+        waitForCallCount(lra, 1, LRA_GONE_AFTER_RECOVERY_MS);
 
         assertEquals(1, getIdempotentWorkDone(lra),
                 "Side effect must be performed exactly once after proxy failover delivers close to coordinator-2");
@@ -118,7 +116,7 @@ class CompleteIT extends TestBase {
         log.info("CompleteIT: testIdempotentComplete_crashAfterReceivingResponse");
         URI lra = prepareCompleteLra("complete-crash-after-response", COMPLETE_IDEMPOTENT);
 
-        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_AFTER_PARTICIPANT_RESPONSE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_PARTICIPANT_RESPONSE.name());
 
         try {
             lraClient.closeLRA(lra);
@@ -128,10 +126,10 @@ class CompleteIT extends TestBase {
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
-        ensureCoordinatorAvailability(CRASH_RECOVERY_WAIT_S);
-        waitForNoActiveLra(lra, LRA_GONE_WAIT_MS);
+        ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
+        waitForNoActiveLra(lra, LRA_GONE_AFTER_RECOVERY_MS);
 
-        int callCount = getIdempotentCallCount(lra);
+        int callCount = getCallCount(lra);
         int workDone = getIdempotentWorkDone(lra);
 
         log.infof("After crash recovery: callCount=%s, workDone=%s", callCount, workDone);
@@ -145,12 +143,12 @@ class CompleteIT extends TestBase {
     @Test
     void testAsyncComplete_withStatus_coordinatorCrashAfterSave() {
         log.info("CompleteIT: testAsyncComplete_withStatus_coordinatorCrashAfterSave");
-        URI lra = prepareCompleteLraAsync(
+        URI lra = prepareCompleteLraWithStatus(
                 "complete-async-after-save",
                 COMPLETE_ASYNC,
                 STATUS_FOR_ASYNC_COMPLETE);
 
-        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_AFTER_SAVE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_SAVE.name());
 
         try {
             lraClient.closeLRA(lra);
@@ -159,8 +157,8 @@ class CompleteIT extends TestBase {
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
-        ensureCoordinatorAvailability(CRASH_RECOVERY_WAIT_S);
-        waitForNoActiveLra(lra, LRA_GONE_WAIT_MS);
+        ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
+        waitForNoActiveLra(lra, LRA_GONE_AFTER_RECOVERY_MS);
         assertNoActiveLras();
     }
 
@@ -171,12 +169,12 @@ class CompleteIT extends TestBase {
     @Test
     void testAsyncComplete_duplicateCallViaProxyFailover() {
         log.info("CompleteIT: testAsyncComplete_duplicateCallViaProxyFailover");
-        URI lra = prepareCompleteLraAsync(
+        URI lra = prepareCompleteLraWithStatus(
                 "complete-async-duplicate",
                 COMPLETE_ASYNC,
                 STATUS_FOR_ASYNC_COMPLETE);
 
-        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_DURING_CLEANUP.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_DURING_CLEANUP.name());
 
         try {
             lraClient.closeLRA(lra);
@@ -185,8 +183,8 @@ class CompleteIT extends TestBase {
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
-        ensureCoordinatorAvailability(CRASH_RECOVERY_WAIT_S);
-        waitForNoActiveLra(lra, LRA_GONE_WAIT_MS);
+        ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
+        waitForNoActiveLra(lra, LRA_GONE_AFTER_RECOVERY_MS);
         assertNoActiveLras();
 
         int completeCalls = getAsyncCallCount(lra);
@@ -207,14 +205,14 @@ class CompleteIT extends TestBase {
     @Test
     void testAsyncComplete_withStatus_crashAfterReceivingResponse() {
         log.info("CompleteIT: testAsyncComplete_withStatus_crashAfterReceivingResponse");
-        waitForAllCoordinators(CRASH_RECOVERY_WAIT_S);
+        waitForAllCoordinators(CRASH_RECOVERY_TIMEOUT_S);
         resetProxyRouting();
-        URI lra = prepareCompleteLraAsync(
+        URI lra = prepareCompleteLraWithStatus(
                 "complete-async-after-response",
                 COMPLETE_ASYNC,
                 STATUS_FOR_ASYNC_COMPLETE);
 
-        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_AFTER_PARTICIPANT_RESPONSE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_PARTICIPANT_RESPONSE.name());
 
         try {
             lraClient.closeLRA(lra);
@@ -223,8 +221,8 @@ class CompleteIT extends TestBase {
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
-        ensureCoordinatorAvailability(CRASH_RECOVERY_WAIT_S);
-        waitForNoActiveLra(lra, LRA_GONE_WAIT_MS);
+        ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
+        waitForNoActiveLra(lra, LRA_GONE_AFTER_RECOVERY_MS);
         assertNoActiveLras();
 
         int completeCalls = getAsyncCallCount(lra);
@@ -271,7 +269,7 @@ class CompleteIT extends TestBase {
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
-        waitForNoActiveLra(lra, LRA_GONE_FAST_MS);
+        waitForNoActiveLra(lra, LRA_GONE_HAPPY_PATH_MS);
 
         List<String> activeIds = getActiveIds();
         String targetUid = LRAConstants.getLRAUid(lra);
@@ -292,9 +290,9 @@ class CompleteIT extends TestBase {
                 COMPLETE_IDEMPOTENT);
 
         assertDoesNotThrow(() -> lraClient.cancelLRA(lra));
-        waitForNoActiveLra(lra, LRA_GONE_FAST_MS);
+        waitForNoActiveLra(lra, LRA_GONE_HAPPY_PATH_MS);
 
-        assertEquals(0, getIdempotentCallCount(lra),
+        assertEquals(0, getCallCount(lra),
                 "@Complete must not be called when the LRA is cancelled");
     }
 
@@ -307,9 +305,9 @@ class CompleteIT extends TestBase {
                 COMPLETE);
 
         assertDoesNotThrow(() -> lraClient.closeLRA(lra));
-        waitForNoActiveLra(lra, LRA_GONE_FAST_MS);
+        waitForNoActiveLra(lra, LRA_GONE_HAPPY_PATH_MS);
 
-        assertEquals(0, getIdempotentCallCount(lra),
+        assertEquals(0, getCallCount(lra),
                 "@Compensate must not be called when the LRA is closed");
     }
 

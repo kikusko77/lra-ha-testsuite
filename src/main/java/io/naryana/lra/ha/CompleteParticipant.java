@@ -130,8 +130,8 @@ public class CompleteParticipant {
     }
 
     @GET
-    @Path("idempotent-call-count")
-    public int idempotentCallCount(@QueryParam("lraId") String lraId) {
+    @Path("call-count")
+    public int callCount(@QueryParam("lraId") String lraId) {
         AtomicInteger c = idempotentCallCounts.get(lraId);
         return c == null ? 0 : c.get();
     }

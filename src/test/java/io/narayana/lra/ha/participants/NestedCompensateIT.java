@@ -24,9 +24,7 @@ class NestedCompensateIT extends TestBase {
 
     private static final Logger log = Logger.getLogger(NestedCompensateIT.class);
 
-    private static final long CRASH_RECOVERY_WAIT_S = 15;
-    private static final long LRA_GONE_WAIT_MS = 30_000;
-    private static final long LRA_GONE_FAST_MS = 10_000;
+    private static final long CRASH_RECOVERY_TIMEOUT_S = 15;
     private static final long RECOVERY_SCAN_WAIT_MS = 20_000;
 
     @Test
@@ -36,7 +34,7 @@ class NestedCompensateIT extends TestBase {
         URI nested = prepareNestedLra(parent, "nested-idempotent-during-cleanup",
                 COMPENSATE_IDEMPOTENT, COMPLETE);
 
-        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_DURING_CLEANUP.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_DURING_CLEANUP.name());
 
         try {
             lraClient.cancelLRA(nested);
@@ -45,10 +43,10 @@ class NestedCompensateIT extends TestBase {
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
-        ensureCoordinatorAvailability(CRASH_RECOVERY_WAIT_S);
-        waitForNoActiveLra(nested, LRA_GONE_WAIT_MS);
+        ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
+        waitForNoActiveLra(nested, LRA_GONE_AFTER_RECOVERY_MS);
 
-        int callCount = getIdempotentCallCount(nested);
+        int callCount = getCallCount(nested);
         int workDone = getIdempotentWorkDone(nested);
         log.infof("After crash recovery: callCount=%s, workDone=%s", callCount, workDone);
 
@@ -63,7 +61,7 @@ class NestedCompensateIT extends TestBase {
         URI nested = prepareNestedLra(parent, "nested-idempotent-after-save",
                 COMPENSATE_IDEMPOTENT, COMPLETE);
 
-        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_AFTER_SAVE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_SAVE.name());
 
         try {
             lraClient.cancelLRA(nested);
@@ -74,8 +72,8 @@ class NestedCompensateIT extends TestBase {
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
-        ensureCoordinatorAvailability(CRASH_RECOVERY_WAIT_S);
-        waitForNoActiveLra(nested, LRA_GONE_WAIT_MS);
+        ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
+        waitForNoActiveLra(nested, LRA_GONE_AFTER_RECOVERY_MS);
 
         assertEquals(1, getIdempotentWorkDone(nested),
                 "Side effect must be performed exactly once after crash-and-recovery");
@@ -88,7 +86,7 @@ class NestedCompensateIT extends TestBase {
         URI nested = prepareNestedLra(parent, "nested-idempotent-before-save",
                 COMPENSATE_IDEMPOTENT, COMPLETE);
 
-        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_BEFORE_SAVE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_BEFORE_SAVE.name());
 
         try {
             lraClient.cancelLRA(nested);
@@ -97,8 +95,8 @@ class NestedCompensateIT extends TestBase {
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
-        ensureCoordinatorAvailability(CRASH_RECOVERY_WAIT_S);
-        waitForNoActiveLra(nested, LRA_GONE_WAIT_MS);
+        ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
+        waitForNoActiveLra(nested, LRA_GONE_AFTER_RECOVERY_MS);
 
         assertEquals(1, getIdempotentWorkDone(nested),
                 "Side effect must be performed once after the nested LRA is eventually cancelled");
@@ -111,7 +109,7 @@ class NestedCompensateIT extends TestBase {
         URI nested = prepareNestedLra(parent, "nested-async-after-save",
                 COMPENSATE_ASYNC, COMPLETE, STATUS_FOR_ASYNC);
 
-        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_AFTER_SAVE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_SAVE.name());
 
         try {
             lraClient.cancelLRA(nested);
@@ -120,8 +118,8 @@ class NestedCompensateIT extends TestBase {
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
-        ensureCoordinatorAvailability(CRASH_RECOVERY_WAIT_S);
-        waitForNoActiveLra(nested, LRA_GONE_WAIT_MS);
+        ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
+        waitForNoActiveLra(nested, LRA_GONE_AFTER_RECOVERY_MS);
     }
 
     @Test
@@ -131,7 +129,7 @@ class NestedCompensateIT extends TestBase {
         URI nested = prepareNestedLra(parent, "nested-async-duplicate",
                 COMPENSATE_ASYNC, COMPLETE, STATUS_FOR_ASYNC);
 
-        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_DURING_CLEANUP.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_DURING_CLEANUP.name());
 
         try {
             lraClient.cancelLRA(nested);
@@ -140,8 +138,8 @@ class NestedCompensateIT extends TestBase {
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
-        ensureCoordinatorAvailability(CRASH_RECOVERY_WAIT_S);
-        waitForNoActiveLra(nested, LRA_GONE_WAIT_MS);
+        ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
+        waitForNoActiveLra(nested, LRA_GONE_AFTER_RECOVERY_MS);
 
         int compensateCalls = getAsyncCallCount(nested);
         int statusCalls = getAsyncStatusCallCount(nested);
@@ -156,14 +154,14 @@ class NestedCompensateIT extends TestBase {
     @Test
     void testAsyncCompensate_withStatus_crashAfterReceivingResponse() {
         log.info("NestedCompensateIT: testAsyncCompensate_withStatus_crashAfterReceivingResponse");
-        waitForAllCoordinators(CRASH_RECOVERY_WAIT_S);
+        waitForAllCoordinators(CRASH_RECOVERY_TIMEOUT_S);
         resetProxyRouting();
 
         URI parent = startTopLra("nested-async-after-response");
         URI nested = prepareNestedLra(parent, "nested-async-after-response",
                 COMPENSATE_ASYNC, COMPLETE, STATUS_FOR_ASYNC);
 
-        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_AFTER_PARTICIPANT_RESPONSE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_PARTICIPANT_RESPONSE.name());
 
         try {
             lraClient.cancelLRA(nested);
@@ -172,8 +170,8 @@ class NestedCompensateIT extends TestBase {
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
-        ensureCoordinatorAvailability(CRASH_RECOVERY_WAIT_S);
-        waitForNoActiveLra(nested, LRA_GONE_WAIT_MS);
+        ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
+        waitForNoActiveLra(nested, LRA_GONE_AFTER_RECOVERY_MS);
 
         int compensateCalls = getAsyncCallCount(nested);
         int statusCalls = getAsyncStatusCallCount(nested);
@@ -193,7 +191,7 @@ class NestedCompensateIT extends TestBase {
         URI nested = prepareNestedLra(parent, "nested-crash-after-response",
                 COMPENSATE_IDEMPOTENT, COMPLETE);
 
-        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_AFTER_PARTICIPANT_RESPONSE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_PARTICIPANT_RESPONSE.name());
 
         try {
             lraClient.cancelLRA(nested);
@@ -202,10 +200,10 @@ class NestedCompensateIT extends TestBase {
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
-        ensureCoordinatorAvailability(CRASH_RECOVERY_WAIT_S);
-        waitForNoActiveLra(nested, LRA_GONE_WAIT_MS);
+        ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
+        waitForNoActiveLra(nested, LRA_GONE_AFTER_RECOVERY_MS);
 
-        int callCount = getIdempotentCallCount(nested);
+        int callCount = getCallCount(nested);
         int workDone = getIdempotentWorkDone(nested);
         log.infof("After crash recovery: callCount=%s, workDone=%s", callCount, workDone);
 
@@ -245,7 +243,7 @@ class NestedCompensateIT extends TestBase {
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
-        waitForNoActiveLra(nested, LRA_GONE_FAST_MS);
+        waitForNoActiveLra(nested, LRA_GONE_HAPPY_PATH_MS);
 
         List<String> activeIds = getActiveIds();
         String nestedUid = LRAConstants.getLRAUid(nested);

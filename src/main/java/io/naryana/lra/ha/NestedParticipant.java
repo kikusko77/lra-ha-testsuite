@@ -342,8 +342,8 @@ public class NestedParticipant {
     }
 
     @GET
-    @Path("idempotent-call-count")
-    public int idempotentCallCount(@QueryParam("lraId") String lraId) {
+    @Path("call-count")
+    public int callCount(@QueryParam("lraId") String lraId) {
         String uid = key(lraId);
         AtomicInteger compensate = compensateIdempotentCallCounts.get(uid);
         AtomicInteger complete = completeIdempotentCallCounts.get(uid);

@@ -21,17 +21,14 @@ class AfterLraIT extends TestBase {
     }
 
     private static final Logger log = Logger.getLogger(AfterLraIT.class);
-
-    private static final long LRA_GONE_FAST_MS = 10_000;
-    private static final long LRA_GONE_WAIT_MS = 30_000;
-    private static final long CRASH_RECOVERY_WAIT_S = 15;
+    private static final long CRASH_RECOVERY_TIMEOUT_S = 15;
 
     @Test
     void testAfterLra_onCancel_receivesCancelledStatus() {
         log.info("AfterLraIT: testAfterLra_onCancel_receivesCancelledStatus");
-        URI lra = prepareLraWithAfterLra(
+        URI lra = prepareLraWithAfter(
                 participantClientId("after-cancel"),
-                COMPENSATE, COMPLETE, AFTER_LRA);
+                COMPENSATE, COMPLETE);
 
         try {
             lraClient.cancelLRA(lra);
@@ -39,8 +36,8 @@ class AfterLraIT extends TestBase {
             log.infof("cancelLRA returned %s", e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
-        waitForNoActiveLra(lra, LRA_GONE_FAST_MS);
-        waitForAfterCallCount(lra, 1, LRA_GONE_FAST_MS);
+        waitForNoActiveLra(lra, LRA_GONE_HAPPY_PATH_MS);
+        waitForAfterCallCount(lra, 1, LRA_GONE_HAPPY_PATH_MS);
 
         assertEquals(LRAStatus.Cancelled.name(), getAfterLraStatus(lra),
                 "@AfterLRA must receive Cancelled when the LRA is cancelled");
@@ -51,9 +48,9 @@ class AfterLraIT extends TestBase {
     @Test
     void testAfterLra_onFailedToClose_receivesFailedToCloseStatus() {
         log.info("AfterLraIT: testAfterLra_onFailedToClose_receivesFailedToCloseStatus");
-        URI lra = prepareLraWithAfterLra(
+        URI lra = prepareLraWithAfter(
                 participantClientId("after-failed-close"),
-                COMPENSATE, COMPLETE_FAIL, AFTER_LRA);
+                COMPENSATE, COMPLETE_FAIL);
 
         try {
             lraClient.closeLRA(lra);
@@ -62,8 +59,8 @@ class AfterLraIT extends TestBase {
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
-        waitForNoActiveLra(lra, LRA_GONE_FAST_MS);
-        waitForAfterCallCount(lra, 1, LRA_GONE_FAST_MS);
+        waitForNoActiveLra(lra, LRA_GONE_HAPPY_PATH_MS);
+        waitForAfterCallCount(lra, 1, LRA_GONE_HAPPY_PATH_MS);
 
         assertEquals(LRAStatus.FailedToClose.name(), getAfterLraStatus(lra),
                 "@AfterLRA must receive FailedToClose when @Complete permanently fails");
@@ -72,9 +69,9 @@ class AfterLraIT extends TestBase {
     @Test
     void testAfterLra_onFailedToCancel_receivesFailedToCancelStatus() {
         log.info("AfterLraIT: testAfterLra_onFailedToCancel_receivesFailedToCancelStatus");
-        URI lra = prepareLraWithAfterLra(
+        URI lra = prepareLraWithAfter(
                 participantClientId("after-failed-cancel"),
-                COMPENSATE_FAIL, COMPLETE, AFTER_LRA);
+                COMPENSATE_FAIL, COMPLETE);
 
         try {
             lraClient.cancelLRA(lra);
@@ -83,8 +80,8 @@ class AfterLraIT extends TestBase {
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
-        waitForNoActiveLra(lra, LRA_GONE_FAST_MS);
-        waitForAfterCallCount(lra, 1, LRA_GONE_FAST_MS);
+        waitForNoActiveLra(lra, LRA_GONE_HAPPY_PATH_MS);
+        waitForAfterCallCount(lra, 1, LRA_GONE_HAPPY_PATH_MS);
 
         assertEquals(LRAStatus.FailedToCancel.name(), getAfterLraStatus(lra),
                 "@AfterLRA must receive FailedToCancel when @Compensate permanently fails");
@@ -101,11 +98,11 @@ class AfterLraIT extends TestBase {
     @Test
     void testAfterLra_onCancel_coordinatorCrashAfterSave() {
         log.info("AfterLraIT: testAfterLra_onCancel_coordinatorCrashAfterSave");
-        URI lra = prepareLraWithAfterLra(
+        URI lra = prepareLraWithAfter(
                 participantClientId("after-crash-after-save"),
-                COMPENSATE, COMPLETE, AFTER_LRA);
+                COMPENSATE, COMPLETE);
 
-        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_AFTER_SAVE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_SAVE.name());
 
         try {
             lraClient.cancelLRA(lra);
@@ -116,9 +113,9 @@ class AfterLraIT extends TestBase {
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
-        ensureCoordinatorAvailability(CRASH_RECOVERY_WAIT_S);
-        waitForNoActiveLra(lra, LRA_GONE_WAIT_MS);
-        waitForAfterCallCount(lra, 1, LRA_GONE_WAIT_MS);
+        ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
+        waitForNoActiveLra(lra, LRA_GONE_AFTER_RECOVERY_MS);
+        waitForAfterCallCount(lra, 1, LRA_GONE_AFTER_RECOVERY_MS);
 
         assertEquals(LRAStatus.Cancelled.name(), getAfterLraStatus(lra),
                 "@AfterLRA must still be delivered with Cancelled after crash-and-recovery");
@@ -133,11 +130,11 @@ class AfterLraIT extends TestBase {
     @Test
     void testAfterLra_onClose_coordinatorCrashDuringCleanup() {
         log.info("AfterLraIT: testAfterLra_onClose_coordinatorCrashDuringCleanup");
-        URI lra = prepareLraWithAfterLra(
+        URI lra = prepareLraWithAfter(
                 participantClientId("after-crash-during-cleanup"),
-                COMPENSATE, COMPLETE, AFTER_LRA);
+                COMPENSATE, COMPLETE);
 
-        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_DURING_CLEANUP.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_DURING_CLEANUP.name());
 
         try {
             lraClient.closeLRA(lra);
@@ -146,9 +143,9 @@ class AfterLraIT extends TestBase {
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
-        ensureCoordinatorAvailability(CRASH_RECOVERY_WAIT_S);
-        waitForNoActiveLra(lra, LRA_GONE_WAIT_MS);
-        waitForAfterCallCount(lra, 1, LRA_GONE_WAIT_MS);
+        ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
+        waitForNoActiveLra(lra, LRA_GONE_AFTER_RECOVERY_MS);
+        waitForAfterCallCount(lra, 1, LRA_GONE_AFTER_RECOVERY_MS);
 
         assertEquals(LRAStatus.Closed.name(), getAfterLraStatus(lra),
                 "@AfterLRA must be delivered with Closed even when coordinator crashed during cleanup");

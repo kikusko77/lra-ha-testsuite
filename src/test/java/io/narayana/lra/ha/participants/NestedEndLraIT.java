@@ -22,10 +22,7 @@ class NestedEndLraIT extends TestBase {
     }
 
     private static final Logger log = Logger.getLogger(NestedEndLraIT.class);
-
-    private static final long LRA_GONE_FAST_MS = 10_000;
-    private static final long LRA_GONE_WAIT_MS = 30_000;
-    private static final long CRASH_RECOVERY_WAIT_S = 15;
+    private static final long CRASH_RECOVERY_TIMEOUT_S = 15;
 
     @Test
     void testCancelNestedLraBeforeSave() {
@@ -33,11 +30,11 @@ class NestedEndLraIT extends TestBase {
         URI parent = startTopLra("end-nested-cancel-before");
         URI nested = prepareNestedLra(parent, "end-nested-cancel-before", COMPENSATE, COMPLETE);
 
-        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_BEFORE_SAVE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_BEFORE_SAVE.name());
 
         assertDoesNotThrow(() -> lraClient.cancelLRA(nested));
 
-        waitForNoActiveLra(nested, LRA_GONE_FAST_MS);
+        waitForNoActiveLra(nested, LRA_GONE_HAPPY_PATH_MS);
         assertActiveContainsOnlyParent(parent);
     }
 
@@ -47,7 +44,7 @@ class NestedEndLraIT extends TestBase {
         URI parent = startTopLra("end-nested-cancel-after");
         URI nested = prepareNestedLra(parent, "end-nested-cancel-after", COMPENSATE, COMPLETE);
 
-        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_AFTER_SAVE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_SAVE.name());
 
         try {
             lraClient.cancelLRA(nested);
@@ -58,8 +55,8 @@ class NestedEndLraIT extends TestBase {
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown", nested);
         }
 
-        ensureCoordinatorAvailability(CRASH_RECOVERY_WAIT_S);
-        waitForNoActiveLra(nested, LRA_GONE_WAIT_MS);
+        ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
+        waitForNoActiveLra(nested, LRA_GONE_AFTER_RECOVERY_MS);
         assertActiveContainsOnlyParent(parent);
     }
 
@@ -69,11 +66,11 @@ class NestedEndLraIT extends TestBase {
         URI parent = startTopLra("end-nested-close-before");
         URI nested = prepareNestedLra(parent, "end-nested-close-before", COMPENSATE, COMPLETE);
 
-        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_BEFORE_SAVE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_BEFORE_SAVE.name());
 
         assertDoesNotThrow(() -> lraClient.closeLRA(nested));
 
-        waitForNoActiveLra(nested, LRA_GONE_FAST_MS);
+        waitForNoActiveLra(nested, LRA_GONE_HAPPY_PATH_MS);
         assertActiveContainsOnlyParent(parent);
     }
 
@@ -83,7 +80,7 @@ class NestedEndLraIT extends TestBase {
         URI parent = startTopLra("end-nested-close-after");
         URI nested = prepareNestedLra(parent, "end-nested-close-after", COMPENSATE, COMPLETE);
 
-        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_AFTER_SAVE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_SAVE.name());
 
         try {
             lraClient.closeLRA(nested);
@@ -94,8 +91,8 @@ class NestedEndLraIT extends TestBase {
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown", nested);
         }
 
-        ensureCoordinatorAvailability(CRASH_RECOVERY_WAIT_S);
-        waitForNoActiveLra(nested, LRA_GONE_WAIT_MS);
+        ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
+        waitForNoActiveLra(nested, LRA_GONE_AFTER_RECOVERY_MS);
         assertActiveContainsOnlyParent(parent);
     }
 
@@ -105,7 +102,7 @@ class NestedEndLraIT extends TestBase {
         URI parent = startTopLra("end-nested-cancel-cleanup");
         URI nested = prepareNestedLra(parent, "end-nested-cancel-cleanup", COMPENSATE, COMPLETE);
 
-        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_DURING_CLEANUP.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_DURING_CLEANUP.name());
 
         try {
             lraClient.cancelLRA(nested);
@@ -115,8 +112,8 @@ class NestedEndLraIT extends TestBase {
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown", nested);
         }
 
-        ensureCoordinatorAvailability(CRASH_RECOVERY_WAIT_S);
-        waitForNoActiveLra(nested, LRA_GONE_WAIT_MS);
+        ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
+        waitForNoActiveLra(nested, LRA_GONE_AFTER_RECOVERY_MS);
         assertActiveContainsOnlyParent(parent);
     }
 
@@ -126,7 +123,7 @@ class NestedEndLraIT extends TestBase {
         URI parent = startTopLra("end-nested-close-cleanup");
         URI nested = prepareNestedLra(parent, "end-nested-close-cleanup", COMPENSATE, COMPLETE);
 
-        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_DURING_CLEANUP.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_DURING_CLEANUP.name());
 
         try {
             lraClient.closeLRA(nested);
@@ -136,8 +133,8 @@ class NestedEndLraIT extends TestBase {
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown", nested);
         }
 
-        ensureCoordinatorAvailability(CRASH_RECOVERY_WAIT_S);
-        waitForNoActiveLra(nested, LRA_GONE_WAIT_MS);
+        ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
+        waitForNoActiveLra(nested, LRA_GONE_AFTER_RECOVERY_MS);
         assertActiveContainsOnlyParent(parent);
     }
 
@@ -148,10 +145,10 @@ class NestedEndLraIT extends TestBase {
         URI nested = prepareNestedLra(parent, "end-cascade-close", COMPENSATE, COMPLETE);
 
         assertDoesNotThrow(() -> lraClient.closeLRA(nested));
-        waitForNoActiveLra(nested, LRA_GONE_FAST_MS);
+        waitForNoActiveLra(nested, LRA_GONE_HAPPY_PATH_MS);
 
         assertDoesNotThrow(() -> lraClient.closeLRA(parent));
-        waitForNoActiveLra(parent, LRA_GONE_FAST_MS);
+        waitForNoActiveLra(parent, LRA_GONE_HAPPY_PATH_MS);
 
         assertNoActiveLras();
     }
@@ -165,7 +162,7 @@ class NestedEndLraIT extends TestBase {
 
         // Provisional close of nested — @Complete must run.
         assertDoesNotThrow(() -> lraClient.closeLRA(nested));
-        waitForIdempotentCallCount(nested, 1, LRA_GONE_FAST_MS);
+        waitForCallCount(nested, 1, LRA_GONE_HAPPY_PATH_MS);
 
         try {
             lraClient.cancelLRA(parent);
@@ -173,9 +170,9 @@ class NestedEndLraIT extends TestBase {
             log.infof("parent cancelLRA returned %s",
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
-        waitForNoActiveLra(parent, LRA_GONE_WAIT_MS);
+        waitForNoActiveLra(parent, LRA_GONE_AFTER_RECOVERY_MS);
 
-        int total = getIdempotentCallCount(nested);
+        int total = getCallCount(nested);
         log.infof("Total nested participant callbacks (complete + compensate) = %s", total);
         if (total < 2) {
             log.warn("HA cache-staleness gap: parent-cancel cascade did not deliver @Compensate "
@@ -194,9 +191,9 @@ class NestedEndLraIT extends TestBase {
                 COMPENSATE_IDEMPOTENT, COMPLETE_IDEMPOTENT);
 
         assertDoesNotThrow(() -> lraClient.closeLRA(nested));
-        waitForIdempotentCallCount(nested, 1, LRA_GONE_FAST_MS);
+        waitForCallCount(nested, 1, LRA_GONE_HAPPY_PATH_MS);
 
-        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_AFTER_SAVE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_SAVE.name());
 
         try {
             lraClient.cancelLRA(parent);
@@ -205,10 +202,10 @@ class NestedEndLraIT extends TestBase {
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
-        ensureCoordinatorAvailability(CRASH_RECOVERY_WAIT_S);
-        waitForNoActiveLra(parent, LRA_GONE_WAIT_MS);
+        ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
+        waitForNoActiveLra(parent, LRA_GONE_AFTER_RECOVERY_MS);
 
-        int total = getIdempotentCallCount(nested);
+        int total = getCallCount(nested);
         log.infof("Total callbacks (complete + compensate) after crash recovery = %s", total);
         if (total < 2) {
             log.warn("HA cache-staleness gap (with crash): parent-cancel cascade did not deliver "

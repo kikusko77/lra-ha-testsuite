@@ -23,10 +23,7 @@ class LeaveIT extends TestBase {
     }
 
     private static final Logger log = Logger.getLogger(LeaveIT.class);
-
-    private static final long LRA_GONE_FAST_MS = 10_000;
-    private static final long LRA_GONE_WAIT_MS = 30_000;
-    private static final long CRASH_RECOVERY_WAIT_S = 15;
+    private static final long CRASH_RECOVERY_TIMEOUT_S = 15;
 
     @Test
     void testLeaveBeforeCancel() {
@@ -37,9 +34,9 @@ class LeaveIT extends TestBase {
 
         assertDoesNotThrow(() -> lraClient.cancelLRA(lra));
 
-        waitForNoActiveLra(lra, LRA_GONE_FAST_MS);
+        waitForNoActiveLra(lra, LRA_GONE_HAPPY_PATH_MS);
 
-        assertEquals(0, getIdempotentCallCount(lra),
+        assertEquals(0, getCallCount(lra),
                 "@Compensate must not be called after the participant left the LRA");
     }
 
@@ -52,9 +49,9 @@ class LeaveIT extends TestBase {
 
         assertDoesNotThrow(() -> lraClient.closeLRA(lra));
 
-        waitForNoActiveLra(lra, LRA_GONE_FAST_MS);
+        waitForNoActiveLra(lra, LRA_GONE_HAPPY_PATH_MS);
 
-        assertEquals(0, getIdempotentCallCount(lra),
+        assertEquals(0, getCallCount(lra),
                 "@Complete must not be called after the participant left the LRA");
     }
 
@@ -69,7 +66,7 @@ class LeaveIT extends TestBase {
 
         callLeave(lra);
 
-        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_BEFORE_SAVE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_BEFORE_SAVE.name());
 
         try {
             lraClient.cancelLRA(lra);
@@ -78,10 +75,10 @@ class LeaveIT extends TestBase {
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
-        ensureCoordinatorAvailability(CRASH_RECOVERY_WAIT_S);
-        waitForNoActiveLra(lra, LRA_GONE_WAIT_MS);
+        ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
+        waitForNoActiveLra(lra, LRA_GONE_AFTER_RECOVERY_MS);
 
-        assertEquals(0, getIdempotentCallCount(lra),
+        assertEquals(0, getCallCount(lra),
                 "Left participant must not receive @Compensate even after coordinator failover");
     }
 
@@ -92,7 +89,7 @@ class LeaveIT extends TestBase {
 
         callLeave(lra);
 
-        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_AFTER_SAVE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_SAVE.name());
 
         try {
             lraClient.cancelLRA(lra);
@@ -103,10 +100,10 @@ class LeaveIT extends TestBase {
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
-        ensureCoordinatorAvailability(CRASH_RECOVERY_WAIT_S);
-        waitForNoActiveLra(lra, LRA_GONE_WAIT_MS);
+        ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
+        waitForNoActiveLra(lra, LRA_GONE_AFTER_RECOVERY_MS);
 
-        assertEquals(0, getIdempotentCallCount(lra),
+        assertEquals(0, getCallCount(lra),
                 "Left participant must not receive @Compensate after crash-and-recovery");
     }
 
@@ -117,7 +114,7 @@ class LeaveIT extends TestBase {
 
         callLeave(lra);
 
-        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_AFTER_SAVE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_SAVE.name());
 
         try {
             lraClient.closeLRA(lra);
@@ -128,10 +125,10 @@ class LeaveIT extends TestBase {
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
-        ensureCoordinatorAvailability(CRASH_RECOVERY_WAIT_S);
-        waitForNoActiveLra(lra, LRA_GONE_WAIT_MS);
+        ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
+        waitForNoActiveLra(lra, LRA_GONE_AFTER_RECOVERY_MS);
 
-        assertEquals(0, getIdempotentCallCount(lra),
+        assertEquals(0, getCallCount(lra),
                 "Left participant must not receive @Complete after crash-and-recovery");
     }
 
@@ -142,7 +139,7 @@ class LeaveIT extends TestBase {
         String compensatorLink = buildCompensatorLink(
                 participantUri(COMPENSATE), participantUri(COMPLETE));
 
-        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.LEAVE_BEFORE_SAVE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.LEAVE_BEFORE_SAVE.name());
 
         try {
             lraClient.leaveLRA(lra, compensatorLink);
@@ -151,7 +148,7 @@ class LeaveIT extends TestBase {
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
-        ensureCoordinatorAvailability(CRASH_RECOVERY_WAIT_S);
+        ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
 
         try {
             lraClient.cancelLRA(lra);
@@ -159,9 +156,9 @@ class LeaveIT extends TestBase {
         } catch (jakarta.ws.rs.WebApplicationException ignored) {
         }
 
-        waitForNoActiveLra(lra, LRA_GONE_WAIT_MS);
+        waitForNoActiveLra(lra, LRA_GONE_AFTER_RECOVERY_MS);
 
-        assertEquals(0, getIdempotentCallCount(lra),
+        assertEquals(0, getCallCount(lra),
                 "@Compensate must not fire — leave should have persisted via @Retry failover");
     }
 
@@ -172,7 +169,7 @@ class LeaveIT extends TestBase {
         String compensatorLink = buildCompensatorLink(
                 participantUri(COMPENSATE), participantUri(COMPLETE));
 
-        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.LEAVE_AFTER_SAVE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.LEAVE_AFTER_SAVE.name());
 
         try {
             lraClient.leaveLRA(lra, compensatorLink);
@@ -181,7 +178,7 @@ class LeaveIT extends TestBase {
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
-        ensureCoordinatorAvailability(CRASH_RECOVERY_WAIT_S);
+        ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
 
         try {
             lraClient.cancelLRA(lra);
@@ -189,9 +186,9 @@ class LeaveIT extends TestBase {
         } catch (jakarta.ws.rs.WebApplicationException ignored) {
         }
 
-        waitForNoActiveLra(lra, LRA_GONE_WAIT_MS);
+        waitForNoActiveLra(lra, LRA_GONE_AFTER_RECOVERY_MS);
 
-        assertEquals(0, getIdempotentCallCount(lra),
+        assertEquals(0, getCallCount(lra),
                 "@Compensate must not fire after leave persisted (LEAVE_AFTER_SAVE)");
     }
 
@@ -202,7 +199,7 @@ class LeaveIT extends TestBase {
         String compensatorLink = buildCompensatorLink(
                 participantUri(COMPENSATE), participantUri(COMPLETE));
 
-        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.LEAVE_BEFORE_SAVE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.LEAVE_BEFORE_SAVE.name());
 
         try {
             lraClient.leaveLRA(lra, compensatorLink);
@@ -211,7 +208,7 @@ class LeaveIT extends TestBase {
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
-        ensureCoordinatorAvailability(CRASH_RECOVERY_WAIT_S);
+        ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
 
         try {
             lraClient.closeLRA(lra);
@@ -219,9 +216,9 @@ class LeaveIT extends TestBase {
         } catch (jakarta.ws.rs.WebApplicationException ignored) {
         }
 
-        waitForNoActiveLra(lra, LRA_GONE_WAIT_MS);
+        waitForNoActiveLra(lra, LRA_GONE_AFTER_RECOVERY_MS);
 
-        assertEquals(0, getIdempotentCallCount(lra),
+        assertEquals(0, getCallCount(lra),
                 "@Complete must not fire — leave should have persisted via @Retry failover");
     }
 
@@ -232,7 +229,7 @@ class LeaveIT extends TestBase {
         String compensatorLink = buildCompensatorLink(
                 participantUri(COMPENSATE), participantUri(COMPLETE));
 
-        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.LEAVE_AFTER_SAVE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.LEAVE_AFTER_SAVE.name());
 
         try {
             lraClient.leaveLRA(lra, compensatorLink);
@@ -241,7 +238,7 @@ class LeaveIT extends TestBase {
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
-        ensureCoordinatorAvailability(CRASH_RECOVERY_WAIT_S);
+        ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
 
         try {
             lraClient.closeLRA(lra);
@@ -249,9 +246,9 @@ class LeaveIT extends TestBase {
         } catch (jakarta.ws.rs.WebApplicationException ignored) {
         }
 
-        waitForNoActiveLra(lra, LRA_GONE_WAIT_MS);
+        waitForNoActiveLra(lra, LRA_GONE_AFTER_RECOVERY_MS);
 
-        assertEquals(0, getIdempotentCallCount(lra),
+        assertEquals(0, getCallCount(lra),
                 "@Complete must not fire after leave persisted (LEAVE_AFTER_SAVE)");
     }
 

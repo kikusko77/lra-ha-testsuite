@@ -22,10 +22,7 @@ class StatusIT extends TestBase {
     }
 
     private static final Logger log = Logger.getLogger(StatusIT.class);
-
-    private static final long LRA_GONE_FAST_MS = 10_000;
-    private static final long LRA_GONE_WAIT_MS = 30_000;
-    private static final long CRASH_RECOVERY_WAIT_S = 125;
+    private static final long CRASH_RECOVERY_TIMEOUT_S = 125;
 
     /**
      * The participant signals that it no longer remembers the transaction, so the coordinator
@@ -42,7 +39,7 @@ class StatusIT extends TestBase {
 
         assertDoesNotThrow(() -> lraClient.cancelLRA(lra));
 
-        waitForNoActiveLra(lra, LRA_GONE_FAST_MS);
+        waitForNoActiveLra(lra, LRA_GONE_HAPPY_PATH_MS);
         assertNoActiveLras();
 
         int compensateCalls = getAsyncCompensateCallCount(lra);
@@ -70,7 +67,7 @@ class StatusIT extends TestBase {
 
         assertDoesNotThrow(() -> lraClient.closeLRA(lra));
 
-        waitForNoActiveLra(lra, LRA_GONE_FAST_MS);
+        waitForNoActiveLra(lra, LRA_GONE_HAPPY_PATH_MS);
         assertNoActiveLras();
 
         int completeCalls = getAsyncCompleteCallCount(lra);
@@ -101,8 +98,8 @@ class StatusIT extends TestBase {
         // Wait for the recovery scanner to call @Status at least once.
         // The LRA leaves the Active list immediately on cancel (transitions to Cancelling),
         // so waitForNoActiveLra returns before recovery has even started.
-        waitForStatusIntermediateCompensateCallCount(lra, 1, LRA_GONE_WAIT_MS);
-        waitForNoActiveLra(lra, LRA_GONE_FAST_MS);
+        waitForStatusIntermediateCompensateCallCount(lra, 1, LRA_GONE_AFTER_RECOVERY_MS);
+        waitForNoActiveLra(lra, LRA_GONE_HAPPY_PATH_MS);
         assertNoActiveLras();
 
         int compensateCalls = getAsyncCompensateCallCount(lra);
@@ -135,8 +132,8 @@ class StatusIT extends TestBase {
 
         assertDoesNotThrow(() -> lraClient.closeLRA(lra));
 
-        waitForStatusIntermediateCompleteCallCount(lra, 1, LRA_GONE_WAIT_MS);
-        waitForNoActiveLra(lra, LRA_GONE_FAST_MS);
+        waitForStatusIntermediateCompleteCallCount(lra, 1, LRA_GONE_AFTER_RECOVERY_MS);
+        waitForNoActiveLra(lra, LRA_GONE_HAPPY_PATH_MS);
         assertNoActiveLras();
 
         int completeCalls = getAsyncCompleteCallCount(lra);
@@ -158,7 +155,7 @@ class StatusIT extends TestBase {
     @Test
     void testAsyncCompensate_statusGone_coordinatorCrashAfterParticipantResponse() {
         log.info("StatusIT: testAsyncCompensate_statusGone_coordinatorCrashAfterParticipantResponse");
-        waitForAllCoordinators(CRASH_RECOVERY_WAIT_S);
+        waitForAllCoordinators(CRASH_RECOVERY_TIMEOUT_S);
         resetProxyRouting();
         URI lra = prepareLra(
                 participantClientId("compensate-gone-crash"),
@@ -166,7 +163,7 @@ class StatusIT extends TestBase {
                 COMPLETE,
                 STATUS_GONE);
 
-        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_AFTER_PARTICIPANT_RESPONSE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_PARTICIPANT_RESPONSE.name());
 
         try {
             lraClient.cancelLRA(lra);
@@ -175,8 +172,8 @@ class StatusIT extends TestBase {
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
-        ensureCoordinatorAvailability(CRASH_RECOVERY_WAIT_S);
-        waitForNoActiveLra(lra, LRA_GONE_WAIT_MS);
+        ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
+        waitForNoActiveLra(lra, LRA_GONE_AFTER_RECOVERY_MS);
         assertNoActiveLras();
 
         int compensateCalls = getAsyncCompensateCallCount(lra);
@@ -198,7 +195,7 @@ class StatusIT extends TestBase {
     @Test
     void testAsyncComplete_intermediateStatus_coordinatorCrashAfterParticipantResponse() {
         log.info("StatusIT: testAsyncComplete_intermediateStatus_coordinatorCrashAfterParticipantResponse");
-        waitForAllCoordinators(CRASH_RECOVERY_WAIT_S);
+        waitForAllCoordinators(CRASH_RECOVERY_TIMEOUT_S);
         resetProxyRouting();
         URI lra = prepareLra(
                 participantClientId("complete-intermediate-crash"),
@@ -206,7 +203,7 @@ class StatusIT extends TestBase {
                 COMPLETE_ASYNC_STATUS,
                 STATUS_INTERMEDIATE_COMPLETE);
 
-        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_AFTER_PARTICIPANT_RESPONSE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_PARTICIPANT_RESPONSE.name());
 
         try {
             lraClient.closeLRA(lra);
@@ -215,8 +212,8 @@ class StatusIT extends TestBase {
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
-        ensureCoordinatorAvailability(CRASH_RECOVERY_WAIT_S);
-        waitForNoActiveLra(lra, LRA_GONE_WAIT_MS);
+        ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
+        waitForNoActiveLra(lra, LRA_GONE_AFTER_RECOVERY_MS);
         assertNoActiveLras();
 
         int completeCalls = getAsyncCompleteCallCount(lra);

@@ -21,23 +21,20 @@ class NestedAfterLraIT extends TestBase {
     }
 
     private static final Logger log = Logger.getLogger(NestedAfterLraIT.class);
-
-    private static final long LRA_GONE_FAST_MS = 10_000;
-    private static final long LRA_GONE_WAIT_MS = 30_000;
-    private static final long CRASH_RECOVERY_WAIT_S = 15;
+    private static final long CRASH_RECOVERY_TIMEOUT_S = 15;
 
     @Test
     void testAfterLra_onNestedAndParentCancel_receivesCancelledStatus() {
         log.info("NestedAfterLraIT: testAfterLra_onNestedAndParentCancel_receivesCancelledStatus");
         URI parent = startTopLra("nested-after-cancel");
-        URI nested = prepareNestedLraWithAfterLra(parent, "nested-after-cancel",
-                COMPENSATE, COMPLETE, AFTER_LRA);
+        URI nested = prepareNestedLraWithAfter(parent, "nested-after-cancel",
+                COMPENSATE, COMPLETE);
 
-        cancelQuietly(nested);
-        waitForNoActiveLra(nested, LRA_GONE_FAST_MS);
+        cancel(nested);
+        waitForNoActiveLra(nested, LRA_GONE_HAPPY_PATH_MS);
 
-        cancelQuietly(parent);
-        waitForAfterCallCount(nested, 1, LRA_GONE_WAIT_MS);
+        cancel(parent);
+        waitForAfterCallCount(nested, 1, LRA_GONE_AFTER_RECOVERY_MS);
 
         assertEquals(LRAStatus.Cancelled.name(), getAfterLraStatus(nested),
                 "@AfterLRA must receive Cancelled after parent cancel cascades");
@@ -49,16 +46,16 @@ class NestedAfterLraIT extends TestBase {
     void testAfterLra_onProvisionalCloseThenParentCancel_receivesCancelledStatus() {
         log.info("NestedAfterLraIT: testAfterLra_onProvisionalCloseThenParentCancel_receivesCancelledStatus");
         URI parent = startTopLra("nested-after-provisional-cancel");
-        URI nested = prepareNestedLraWithAfterLra(parent, "nested-after-provisional-cancel",
-                COMPENSATE, COMPLETE, AFTER_LRA);
+        URI nested = prepareNestedLraWithAfter(parent, "nested-after-provisional-cancel",
+                COMPENSATE, COMPLETE);
 
-        closeQuietly(nested);
-        waitForNoActiveLra(nested, LRA_GONE_FAST_MS);
+        close(nested);
+        waitForNoActiveLra(nested, LRA_GONE_HAPPY_PATH_MS);
         assertEquals(0, getAfterCallCount(nested),
                 "@AfterLRA must not fire on provisional close");
 
-        cancelQuietly(parent);
-        waitForAfterCallCount(nested, 1, LRA_GONE_WAIT_MS);
+        cancel(parent);
+        waitForAfterCallCount(nested, 1, LRA_GONE_AFTER_RECOVERY_MS);
 
         assertAfterLraStatusOrHaGap(nested, LRAStatus.Cancelled);
     }
@@ -67,14 +64,14 @@ class NestedAfterLraIT extends TestBase {
     void testAfterLra_onFailedToClose_receivesFailedToCloseStatus() {
         log.info("NestedAfterLraIT: testAfterLra_onFailedToClose_receivesFailedToCloseStatus");
         URI parent = startTopLra("nested-after-failed-close");
-        URI nested = prepareNestedLraWithAfterLra(parent, "nested-after-failed-close",
-                COMPENSATE, COMPLETE_FAIL, AFTER_LRA);
+        URI nested = prepareNestedLraWithAfter(parent, "nested-after-failed-close",
+                COMPENSATE, COMPLETE_FAIL);
 
-        closeQuietly(nested);
-        waitForNoActiveLra(nested, LRA_GONE_FAST_MS);
+        close(nested);
+        waitForNoActiveLra(nested, LRA_GONE_HAPPY_PATH_MS);
 
-        closeQuietly(parent);
-        waitForAfterCallCount(nested, 1, LRA_GONE_WAIT_MS);
+        close(parent);
+        waitForAfterCallCount(nested, 1, LRA_GONE_AFTER_RECOVERY_MS);
 
         assertAfterLraStatusOrHaGap(nested, LRAStatus.FailedToClose);
     }
@@ -83,14 +80,14 @@ class NestedAfterLraIT extends TestBase {
     void testAfterLra_onFailedToCancel_receivesFailedToCancelStatus() {
         log.info("NestedAfterLraIT: testAfterLra_onFailedToCancel_receivesFailedToCancelStatus");
         URI parent = startTopLra("nested-after-failed-cancel");
-        URI nested = prepareNestedLraWithAfterLra(parent, "nested-after-failed-cancel",
-                COMPENSATE_FAIL, COMPLETE, AFTER_LRA);
+        URI nested = prepareNestedLraWithAfter(parent, "nested-after-failed-cancel",
+                COMPENSATE_FAIL, COMPLETE);
 
-        cancelQuietly(nested);
-        waitForNoActiveLra(nested, LRA_GONE_FAST_MS);
+        cancel(nested);
+        waitForNoActiveLra(nested, LRA_GONE_HAPPY_PATH_MS);
 
-        cancelQuietly(parent);
-        waitForAfterCallCount(nested, 1, LRA_GONE_WAIT_MS);
+        cancel(parent);
+        waitForAfterCallCount(nested, 1, LRA_GONE_AFTER_RECOVERY_MS);
 
         assertEquals(LRAStatus.FailedToCancel.name(), getAfterLraStatus(nested),
                 "@AfterLRA must receive FailedToCancel when nested @Compensate permanently fails");
@@ -100,17 +97,17 @@ class NestedAfterLraIT extends TestBase {
     void testAfterLra_onParentCancel_coordinatorCrashAfterSave() {
         log.info("NestedAfterLraIT: testAfterLra_onParentCancel_coordinatorCrashAfterSave");
         URI parent = startTopLra("nested-after-cancel-crash-after-save");
-        URI nested = prepareNestedLraWithAfterLra(parent, "nested-after-cancel-crash-after-save",
-                COMPENSATE, COMPLETE, AFTER_LRA);
+        URI nested = prepareNestedLraWithAfter(parent, "nested-after-cancel-crash-after-save",
+                COMPENSATE, COMPLETE);
 
-        cancelQuietly(nested);
-        waitForNoActiveLra(nested, LRA_GONE_FAST_MS);
+        cancel(nested);
+        waitForNoActiveLra(nested, LRA_GONE_HAPPY_PATH_MS);
 
-        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_AFTER_SAVE.name());
-        cancelQuietly(parent);
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_SAVE.name());
+        cancel(parent);
 
-        ensureCoordinatorAvailability(CRASH_RECOVERY_WAIT_S);
-        waitForAfterCallCount(nested, 1, LRA_GONE_WAIT_MS);
+        ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
+        waitForAfterCallCount(nested, 1, LRA_GONE_AFTER_RECOVERY_MS);
 
         assertEquals(LRAStatus.Cancelled.name(), getAfterLraStatus(nested),
                 "@AfterLRA must still be delivered with Cancelled after parent crash-and-recovery");
@@ -122,17 +119,17 @@ class NestedAfterLraIT extends TestBase {
     void testAfterLra_onParentClose_coordinatorCrashDuringCleanup() {
         log.info("NestedAfterLraIT: testAfterLra_onParentClose_coordinatorCrashDuringCleanup");
         URI parent = startTopLra("nested-after-close-crash-cleanup");
-        URI nested = prepareNestedLraWithAfterLra(parent, "nested-after-close-crash-cleanup",
-                COMPENSATE, COMPLETE, AFTER_LRA);
+        URI nested = prepareNestedLraWithAfter(parent, "nested-after-close-crash-cleanup",
+                COMPENSATE, COMPLETE);
 
-        closeQuietly(nested);
-        waitForNoActiveLra(nested, LRA_GONE_FAST_MS);
+        close(nested);
+        waitForNoActiveLra(nested, LRA_GONE_HAPPY_PATH_MS);
 
-        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_DURING_CLEANUP.name());
-        closeQuietly(parent);
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_DURING_CLEANUP.name());
+        close(parent);
 
-        ensureCoordinatorAvailability(CRASH_RECOVERY_WAIT_S);
-        waitForAfterCallCount(nested, 1, LRA_GONE_WAIT_MS);
+        ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
+        waitForAfterCallCount(nested, 1, LRA_GONE_AFTER_RECOVERY_MS);
 
         assertAfterLraStatusOrHaGap(nested, LRAStatus.Closed);
     }
@@ -149,7 +146,7 @@ class NestedAfterLraIT extends TestBase {
         }
     }
 
-    private void closeQuietly(URI lra) {
+    private void close(URI lra) {
         try {
             lraClient.closeLRA(lra);
         } catch (jakarta.ws.rs.WebApplicationException e) {
@@ -158,7 +155,7 @@ class NestedAfterLraIT extends TestBase {
         }
     }
 
-    private void cancelQuietly(URI lra) {
+    private void cancel(URI lra) {
         try {
             lraClient.cancelLRA(lra);
         } catch (jakarta.ws.rs.NotFoundException e) {

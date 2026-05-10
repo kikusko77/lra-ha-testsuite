@@ -32,7 +32,7 @@ public class AfterLraParticipant {
     private final ConcurrentHashMap<String, String> receivedStatus = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, AtomicInteger> afterCallCounts = new ConcurrentHashMap<>();
     private final Set<String> afterWorkDone = ConcurrentHashMap.newKeySet();
-    private final ConcurrentHashMap<String, AtomicInteger> afterIdempotentCounts = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, AtomicInteger> afterRetryOnceCounts = new ConcurrentHashMap<>();
 
     @AfterLRA
     @PUT
@@ -56,11 +56,11 @@ public class AfterLraParticipant {
     @AfterLRA
     @PUT
     @Path("after-idempotent")
-    public Response afterIdempotent(
+    public Response afterRetryOnce(
             @HeaderParam(LRA.LRA_HTTP_ENDED_CONTEXT_HEADER) URI lraId,
             LRAStatus status) {
         String uid = lraId.toASCIIString();
-        int n = afterIdempotentCounts.computeIfAbsent(uid, k -> new AtomicInteger()).incrementAndGet();
+        int n = afterRetryOnceCounts.computeIfAbsent(uid, k -> new AtomicInteger()).incrementAndGet();
         String statusName = status != null ? status.name() : "null";
         receivedStatus.put(uid, statusName);
         boolean first = afterWorkDone.add(uid); // side effect: happens only once
@@ -122,9 +122,9 @@ public class AfterLraParticipant {
     }
 
     @GET
-    @Path("after-idempotent-call-count")
-    public int afterIdempotentCallCount(@QueryParam("lraId") String lraId) {
-        AtomicInteger c = afterIdempotentCounts.get(lraId);
+    @Path("after-retry-once-call-count")
+    public int afterRetryOnceCallCount(@QueryParam("lraId") String lraId) {
+        AtomicInteger c = afterRetryOnceCounts.get(lraId);
         return c == null ? 0 : c.get();
     }
 

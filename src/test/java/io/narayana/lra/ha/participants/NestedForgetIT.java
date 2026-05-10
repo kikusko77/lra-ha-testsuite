@@ -21,7 +21,7 @@ class NestedForgetIT extends TestBase {
     }
 
     private static final Logger log = Logger.getLogger(NestedForgetIT.class);
-    private static final long CRASH_RECOVERY_WAIT_S = 30;
+    private static final long CRASH_RECOVERY_TIMEOUT_S = 30;
     private static final long RECOVERY_SCAN_WAIT_MS = 120_000;
     private static final long CRASH_SCAN_WAIT_MS = 180_000;
 
@@ -32,12 +32,12 @@ class NestedForgetIT extends TestBase {
         URI nested = prepareNestedLra(parent, "nested-forget-compensate-after-save",
                 COMPENSATE_ASYNC, COMPLETE, FORGET, STATUS_FOR_FORGET_COMPENSATE);
 
-        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_AFTER_SAVE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_SAVE.name());
 
-        cancelQuietly(nested);
+        cancel(nested);
 
-        ensureCoordinatorAvailability(CRASH_RECOVERY_WAIT_S);
-        cancelQuietly(parent);
+        ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
+        cancel(parent);
         waitForFailedAsyncForget(nested, CRASH_SCAN_WAIT_MS);
 
         assertEquals(1, getAsyncCallCount(nested), "Recovery should call async @Compensate exactly once");
@@ -52,12 +52,12 @@ class NestedForgetIT extends TestBase {
         URI nested = prepareNestedLra(parent, "nested-forget-compensate-duplicate",
                 COMPENSATE_ASYNC, COMPLETE, FORGET, STATUS_FOR_FORGET_COMPENSATE);
 
-        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_DURING_CLEANUP.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_DURING_CLEANUP.name());
 
-        cancelQuietly(nested);
+        cancel(nested);
 
-        ensureCoordinatorAvailability(CRASH_RECOVERY_WAIT_S);
-        cancelQuietly(parent);
+        ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
+        cancel(parent);
         waitForFailedAsyncForget(nested, CRASH_SCAN_WAIT_MS);
 
         assertEquals(1, getAsyncCallCount(nested),
@@ -73,12 +73,12 @@ class NestedForgetIT extends TestBase {
         URI nested = prepareNestedLra(parent, "nested-forget-complete-after-save",
                 COMPENSATE, COMPLETE_ASYNC, FORGET, STATUS_FOR_FORGET_COMPLETE);
 
-        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_AFTER_SAVE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_SAVE.name());
 
-        closeQuietly(nested);
+        close(nested);
 
-        ensureCoordinatorAvailability(CRASH_RECOVERY_WAIT_S);
-        closeQuietly(parent);
+        ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
+        close(parent);
         waitForFailedAsyncForget(nested, CRASH_SCAN_WAIT_MS);
 
         assertEquals(1, getAsyncCallCount(nested), "Recovery should call async @Complete exactly once");
@@ -93,12 +93,12 @@ class NestedForgetIT extends TestBase {
         URI nested = prepareNestedLra(parent, "nested-forget-complete-duplicate",
                 COMPENSATE, COMPLETE_ASYNC, FORGET, STATUS_FOR_FORGET_COMPLETE);
 
-        enableFailurePoint(nextRoutedCoordinator(), InjectPoint.END_DURING_CLEANUP.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_DURING_CLEANUP.name());
 
-        closeQuietly(nested);
+        close(nested);
 
-        ensureCoordinatorAvailability(CRASH_RECOVERY_WAIT_S);
-        closeQuietly(parent);
+        ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
+        close(parent);
         waitForFailedAsyncForget(nested, CRASH_SCAN_WAIT_MS);
 
         assertEquals(1, getAsyncCallCount(nested),
@@ -107,7 +107,7 @@ class NestedForgetIT extends TestBase {
         assertForgetCalledAtLeastOnce(nested);
     }
 
-    private void cancelQuietly(URI lra) {
+    private void cancel(URI lra) {
         try {
             lraClient.cancelLRA(lra);
         } catch (jakarta.ws.rs.WebApplicationException e) {
@@ -116,7 +116,7 @@ class NestedForgetIT extends TestBase {
         }
     }
 
-    private void closeQuietly(URI lra) {
+    private void close(URI lra) {
         try {
             lraClient.closeLRA(lra);
         } catch (jakarta.ws.rs.WebApplicationException e) {

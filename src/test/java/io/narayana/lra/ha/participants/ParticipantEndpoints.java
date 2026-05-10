@@ -34,10 +34,9 @@ interface ParticipantEndpoints {
 
     // -- Post-terminal-state notification endpoints -----------------------------
     String AFTER_LRA = "after";
-    String AFTER_LRA_IDEMPOTENT = "after-idempotent";
 
     // -- Diagnostic endpoints --------------------------------------------------
-    String IDEMPOTENT_CALL_COUNT = "idempotent-call-count";
+    String CALL_COUNT = "call-count";
     String IDEMPOTENT_WORK_DONE = "idempotent-work-done";
     String ASYNC_CALL_COUNT = "async-call-count";
     String ASYNC_STATUS_CALL_COUNT = "async-status-call-count";
@@ -49,6 +48,4 @@ interface ParticipantEndpoints {
     String STATUS_INTERMEDIATE_COMPLETE_CALL_COUNT = "status-intermediate-complete-call-count";
     String AFTER_STATUS = "after-status";
     String AFTER_CALL_COUNT = "after-call-count";
-    String AFTER_IDEMPOTENT_CALL_COUNT = "after-idempotent-call-count";
-    String AFTER_WORK_DONE = "after-work-done";
 }

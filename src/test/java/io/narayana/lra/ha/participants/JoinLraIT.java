@@ -3,6 +3,7 @@ package io.narayana.lra.ha.participants;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
+import io.naryana.lra.ha.Participant;
 import io.quarkus.test.common.http.TestHTTPResource;
 import io.quarkus.test.junit.QuarkusTest;
 import java.net.URI;
@@ -23,7 +24,7 @@ class JoinLraIT extends TestBase {
     void testJoinLraDuplicates() {
         log.info("Starting testJoinLraIT after save");
         injectResetAll();
-        String clientId = uniqueClientId("bookGame");
+        String clientId = uniqueClientId("join-duplicates");
         URI lra = lraClient.startLRA(
                 null,
                 clientId,
@@ -37,9 +38,9 @@ class JoinLraIT extends TestBase {
         URI compensateUri = participantUri("compensate");
         URI completeUri = participantUri("complete");
 
-        URI injectedCoordinator = nextRoutedCoordinator();
-        log.infof("Injecting JOIN_AFTER_SAVE on coordinator %s", injectedCoordinator);
-        enableFailurePoint(injectedCoordinator, InjectPoint.JOIN_AFTER_SAVE.name());
+        URI coordinatorWithFailure = nextRoutedCoordinator();
+        log.infof("Injecting JOIN_AFTER_SAVE on coordinator %s", coordinatorWithFailure);
+        enableFailurePoint(coordinatorWithFailure, FailurePoint.JOIN_AFTER_SAVE.name());
         log.info("Injected join hold, calling joinLRA again (same participant, will timeout+retry)");
 
         URI recoveryUrl = lraClient.joinLRA(lra, 30L, compensateUri, completeUri,
@@ -61,7 +62,7 @@ class JoinLraIT extends TestBase {
     void testJoinBeforeSaveCrashStillEnlistsOnce() {
         log.info("Starting testJoinLraIT before save");
         injectResetAll();
-        String clientId = uniqueClientId("bookGame");
+        String clientId = uniqueClientId("join-before-save");
         URI lra = lraClient.startLRA(
                 null,
                 clientId,
@@ -74,9 +75,9 @@ class JoinLraIT extends TestBase {
         URI compensateUri = participantUri("compensate");
         URI completeUri = participantUri("complete");
 
-        URI injectedCoordinator = nextRoutedCoordinator();
-        log.infof("Injecting JOIN_BEFORE_SAVE on coordinator %s", injectedCoordinator);
-        enableFailurePoint(injectedCoordinator, InjectPoint.JOIN_BEFORE_SAVE.name());
+        URI coordinatorWithFailure = nextRoutedCoordinator();
+        log.infof("Injecting JOIN_BEFORE_SAVE on coordinator %s", coordinatorWithFailure);
+        enableFailurePoint(coordinatorWithFailure, FailurePoint.JOIN_BEFORE_SAVE.name());
 
         URI recoveryUrl = lraClient.joinLRA(lra, 30L, compensateUri, completeUri,
                 null, null, null, null, new StringBuilder());
@@ -96,6 +97,6 @@ class JoinLraIT extends TestBase {
     }
 
     private String uniqueClientId(String action) {
-        return "io.naryana.lra.ha.LRAParticipant#" + action + "-" + System.nanoTime();
+        return Participant.class.getName() + "#" + action + "-" + System.nanoTime();
     }
 }

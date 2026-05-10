@@ -68,7 +68,7 @@ public class LeaveParticipant {
      * no-leave baseline.
      */
     @GET
-    @Path("idempotent-call-count")
+    @Path("call-count")
     public int callCount(@QueryParam("lraId") String lraId) {
         AtomicInteger c = callCounts.get(lraId);
         return c == null ? 0 : c.get();
