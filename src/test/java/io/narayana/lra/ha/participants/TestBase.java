@@ -14,7 +14,6 @@ import jakarta.ws.rs.client.ClientBuilder;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriBuilder;
-
 import java.net.URI;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
@@ -22,7 +21,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
-
+import java.util.function.BooleanSupplier;
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionTimeoutException;
 import org.jboss.logging.Logger;
@@ -266,14 +265,19 @@ public abstract class TestBase implements ParticipantEndpoints {
         }
     }
 
-    protected void waitForCallCount(URI lraId, int expected, long timeoutMs) {
+    protected static void waitFor(String description, long timeoutMs, BooleanSupplier condition) {
         try {
-            Awaitility.await("waiting for call count >= " + expected)
+            Awaitility.await(description)
                     .atMost(Duration.ofMillis(timeoutMs))
                     .pollInterval(Duration.ofMillis(200))
-                    .until(() -> getCallCount(lraId) >= expected);
-        } catch (ConditionTimeoutException ignored) {
+                    .until(condition::getAsBoolean);
+        } catch (ConditionTimeoutException timeout) {
+            LOG.warnf("Timed out waiting for %s: %s", description, timeout.getMessage());
         }
+    }
+
+    protected void waitForCallCount(URI lraId, int expected, long timeoutMs) {
+        waitFor("call count >= " + expected, timeoutMs, () -> getCallCount(lraId) >= expected);
     }
 
     /**
@@ -282,45 +286,24 @@ public abstract class TestBase implements ParticipantEndpoints {
      */
     protected void waitForNoActiveLra(URI lraId, long timeoutMs) {
         String targetLraUid = LRAConstants.getLRAUid(lraId);
-        try {
-            Awaitility.await("waiting for LRA " + targetLraUid + " to leave the cluster active list")
-                    .atMost(Duration.ofMillis(timeoutMs))
-                    .pollInterval(Duration.ofMillis(200))
-                    .until(() -> getAllActiveIdsAcrossCoordinators().stream()
-                            .map(LRAConstants::getLRAUid)
-                            .noneMatch(targetLraUid::equals));
-        } catch (ConditionTimeoutException ignored) {
-        }
+        waitFor("LRA " + targetLraUid + " to leave the cluster active list", timeoutMs,
+                () -> getAllActiveIdsAcrossCoordinators().stream()
+                        .map(LRAConstants::getLRAUid)
+                        .noneMatch(targetLraUid::equals));
     }
 
     protected void waitForForgetCallCount(URI lraId, int expected, long timeoutMs) {
-        try {
-            Awaitility.await("waiting for forget call count >= " + expected)
-                    .atMost(Duration.ofMillis(timeoutMs))
-                    .pollInterval(Duration.ofMillis(200))
-                    .until(() -> getForgetCallCount(lraId) >= expected);
-        } catch (ConditionTimeoutException ignored) {
-        }
+        waitFor("forget call count >= " + expected, timeoutMs, () -> getForgetCallCount(lraId) >= expected);
     }
 
     protected void waitForStatusIntermediateCompensateCallCount(URI lraId, int expected, long timeoutMs) {
-        try {
-            Awaitility.await("waiting for status-intermediate-compensate call count >= " + expected)
-                    .atMost(Duration.ofMillis(timeoutMs))
-                    .pollInterval(Duration.ofMillis(200))
-                    .until(() -> getStatusIntermediateCompensateCallCount(lraId) >= expected);
-        } catch (ConditionTimeoutException ignored) {
-        }
+        waitFor("status-intermediate-compensate call count >= " + expected, timeoutMs,
+                () -> getStatusIntermediateCompensateCallCount(lraId) >= expected);
     }
 
     protected void waitForStatusIntermediateCompleteCallCount(URI lraId, int expected, long timeoutMs) {
-        try {
-            Awaitility.await("waiting for status-intermediate-complete call count >= " + expected)
-                    .atMost(Duration.ofMillis(timeoutMs))
-                    .pollInterval(Duration.ofMillis(200))
-                    .until(() -> getStatusIntermediateCompleteCallCount(lraId) >= expected);
-        } catch (ConditionTimeoutException ignored) {
-        }
+        waitFor("status-intermediate-complete call count >= " + expected, timeoutMs,
+                () -> getStatusIntermediateCompleteCallCount(lraId) >= expected);
     }
 
     protected void assertNoActiveLras() {
@@ -495,13 +478,7 @@ public abstract class TestBase implements ParticipantEndpoints {
     }
 
     protected void waitForAfterCallCount(URI lraId, int expected, long timeoutMs) {
-        try {
-            Awaitility.await("waiting for @AfterLRA call count >= " + expected)
-                    .atMost(Duration.ofMillis(timeoutMs))
-                    .pollInterval(Duration.ofMillis(200))
-                    .until(() -> getAfterCallCount(lraId) >= expected);
-        } catch (ConditionTimeoutException ignored) {
-        }
+        waitFor("@AfterLRA call count >= " + expected, timeoutMs, () -> getAfterCallCount(lraId) >= expected);
     }
 
     protected URI prepareLraWithAfter(
