@@ -104,22 +104,22 @@ public abstract class TestBase implements ParticipantEndpoints {
 
     protected List<String> getActiveIds() {
         for (URI base : coordinatorUris) {
-            Response r = null;
+            Response response = null;
             try {
-                r = client.target(base)
+                response = client.target(base)
                         .path("active/ids")
                         .request(MediaType.APPLICATION_JSON)
                         .get();
-                if (r.getStatus() == 200) {
-                    String json = r.readEntity(String.class);
+                if (response.getStatus() == 200) {
+                    String json = response.readEntity(String.class);
                     return JSON.readValue(json, new TypeReference<List<String>>() {
                     });
                 }
             } catch (Exception e) {
                 LOG.infof("Coordinator %s unreachable (possibly crashed)", base);
             } finally {
-                if (r != null)
-                    r.close();
+                if (response != null)
+                    response.close();
             }
         }
         return new ArrayList<>();
@@ -132,21 +132,21 @@ public abstract class TestBase implements ParticipantEndpoints {
     protected List<String> getAllActiveIdsAcrossCoordinators() {
         java.util.LinkedHashSet<String> all = new java.util.LinkedHashSet<>();
         for (URI base : coordinatorUris) {
-            Response r = null;
+            Response response = null;
             try {
-                r = client.target(base)
+                response = client.target(base)
                         .path("active/ids")
                         .request(MediaType.APPLICATION_JSON)
                         .get();
-                if (r.getStatus() == 200) {
-                    String json = r.readEntity(String.class);
+                if (response.getStatus() == 200) {
+                    String json = response.readEntity(String.class);
                     all.addAll(JSON.readValue(json, new TypeReference<List<String>>() {
                     }));
                 }
             } catch (Exception ignored) {
             } finally {
-                if (r != null)
-                    r.close();
+                if (response != null)
+                    response.close();
             }
         }
         return new ArrayList<>(all);
@@ -161,38 +161,38 @@ public abstract class TestBase implements ParticipantEndpoints {
     }
 
     protected void injectReset(URI coordinatorBase) {
-        Response r = null;
+        Response response = null;
         try {
-            r = client.target(coordinatorBase)
+            response = client.target(coordinatorBase)
                     .path("inject/reset")
                     .request(MediaType.TEXT_PLAIN)
                     .post(null);
-            String body = r.hasEntity() ? r.readEntity(String.class) : "";
-            Assertions.assertTrue(r.getStatus() >= 200 && r.getStatus() < 300,
+            String body = response.hasEntity() ? response.readEntity(String.class) : "";
+            Assertions.assertTrue(response.getStatus() >= 200 && response.getStatus() < 300,
                     "Failed to reset inject state on " + coordinatorBase
-                            + " status=" + r.getStatus() + " body=" + body);
+                            + " status=" + response.getStatus() + " body=" + body);
         } finally {
-            if (r != null)
-                r.close();
+            if (response != null)
+                response.close();
         }
     }
 
     private void callInject(URI coordinatorBase, String point, String action) {
-        Response r = null;
+        Response response = null;
         try {
-            r = client.target(coordinatorBase)
+            response = client.target(coordinatorBase)
                     .path("inject")
                     .path(action)
                     .queryParam("point", point)
                     .request(MediaType.TEXT_PLAIN)
                     .post(null);
-            String body = r.hasEntity() ? r.readEntity(String.class) : "";
-            Assertions.assertTrue(r.getStatus() >= 200 && r.getStatus() < 300,
+            String body = response.hasEntity() ? response.readEntity(String.class) : "";
+            Assertions.assertTrue(response.getStatus() >= 200 && response.getStatus() < 300,
                     "Failed to " + action + " inject " + point + " on " + coordinatorBase
-                            + " status=" + r.getStatus() + " body=" + body);
+                            + " status=" + response.getStatus() + " body=" + body);
         } finally {
-            if (r != null)
-                r.close();
+            if (response != null)
+                response.close();
         }
     }
 
@@ -229,15 +229,15 @@ public abstract class TestBase implements ParticipantEndpoints {
 
     private boolean isCoordinatorReachable(URI base) {
         URI healthUri = URI.create("http://" + base.getHost() + ":" + base.getPort() + "/q/health/ready");
-        Response r = null;
+        Response response = null;
         try {
-            r = client.target(healthUri).request().get();
-            return r.getStatus() == 200;
+            response = client.target(healthUri).request().get();
+            return response.getStatus() == 200;
         } catch (Exception ignored) {
             return false;
         } finally {
-            if (r != null)
-                r.close();
+            if (response != null)
+                response.close();
         }
     }
 
