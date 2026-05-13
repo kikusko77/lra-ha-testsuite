@@ -32,7 +32,7 @@ class NestedForgetIT extends TestBase {
         URI nested = prepareNestedLra(parent, "nested-forget-compensate-after-save",
                 COMPENSATE_ASYNC, COMPLETE, FORGET, STATUS_FOR_FORGET_COMPENSATE);
 
-        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_SAVE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_SAVE);
 
         cancel(nested);
 
@@ -52,7 +52,7 @@ class NestedForgetIT extends TestBase {
         URI nested = prepareNestedLra(parent, "nested-forget-compensate-duplicate",
                 COMPENSATE_ASYNC, COMPLETE, FORGET, STATUS_FOR_FORGET_COMPENSATE);
 
-        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_DURING_CLEANUP.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_DURING_CLEANUP);
 
         cancel(nested);
 
@@ -73,7 +73,7 @@ class NestedForgetIT extends TestBase {
         URI nested = prepareNestedLra(parent, "nested-forget-complete-after-save",
                 COMPENSATE, COMPLETE_ASYNC, FORGET, STATUS_FOR_FORGET_COMPLETE);
 
-        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_SAVE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_SAVE);
 
         close(nested);
 
@@ -93,7 +93,7 @@ class NestedForgetIT extends TestBase {
         URI nested = prepareNestedLra(parent, "nested-forget-complete-duplicate",
                 COMPENSATE, COMPLETE_ASYNC, FORGET, STATUS_FOR_FORGET_COMPLETE);
 
-        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_DURING_CLEANUP.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_DURING_CLEANUP);
 
         close(nested);
 

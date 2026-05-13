@@ -49,7 +49,7 @@ class CompensateIT extends TestBase {
 
     /**
      * Verifies participant-side idempotency under crash replay: the participant's
-     *  guard must suppress the duplicate side effect when
+     * guard must suppress the duplicate side effect when
      * crash-and-recovery causes {@code @Compensate} to be replayed. Crash hits
      * after the original callback already ran and the outcome was persisted.
      */
@@ -58,7 +58,7 @@ class CompensateIT extends TestBase {
         log.info("CompensateIT: testIdempotentCompensate_coordinatorCrashDuringCleanup");
         URI lra = prepareCompensateLra("idempotent-during-cleanup", COMPENSATE_IDEMPOTENT);
 
-        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_DURING_CLEANUP.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_DURING_CLEANUP);
 
         try {
             lraClient.cancelLRA(lra);
@@ -80,7 +80,7 @@ class CompensateIT extends TestBase {
         log.info("CompensateIT: testIdempotentCompensate_coordinatorCrashAfterSave");
         URI lra = prepareCompensateLra("idempotent-after-save", COMPENSATE_IDEMPOTENT);
 
-        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_SAVE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_SAVE);
 
         try {
             lraClient.cancelLRA(lra);
@@ -106,7 +106,7 @@ class CompensateIT extends TestBase {
         log.info("CompensateIT: testIdempotentCompensate_coordinatorCrashBeforeSave");
         URI lra = prepareCompensateLra("idempotent-before-save", COMPENSATE_IDEMPOTENT);
 
-        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_BEFORE_SAVE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_BEFORE_SAVE);
 
         try {
             lraClient.cancelLRA(lra);
@@ -129,7 +129,7 @@ class CompensateIT extends TestBase {
                 COMPENSATE_ASYNC,
                 STATUS_FOR_ASYNC);
 
-        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_SAVE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_SAVE);
 
         try {
             lraClient.cancelLRA(lra);
@@ -157,7 +157,7 @@ class CompensateIT extends TestBase {
                 COMPENSATE_ASYNC,
                 STATUS_FOR_ASYNC);
 
-        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_DURING_CLEANUP.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_DURING_CLEANUP);
 
         try {
             lraClient.cancelLRA(lra);
@@ -187,7 +187,7 @@ class CompensateIT extends TestBase {
                 COMPENSATE_ASYNC,
                 STATUS_FOR_ASYNC);
 
-        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_PARTICIPANT_RESPONSE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_PARTICIPANT_RESPONSE);
 
         try {
             lraClient.cancelLRA(lra);
@@ -212,7 +212,7 @@ class CompensateIT extends TestBase {
         log.info("CompensateIT: testIdempotentCompensate_crashAfterReceivingResponse");
         URI lra = prepareCompensateLra("crash-after-response", COMPENSATE_IDEMPOTENT);
 
-        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_PARTICIPANT_RESPONSE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_PARTICIPANT_RESPONSE);
 
         try {
             lraClient.cancelLRA(lra);

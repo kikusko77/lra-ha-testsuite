@@ -34,7 +34,7 @@ class NestedCompensateIT extends TestBase {
         URI nested = prepareNestedLra(parent, "nested-idempotent-during-cleanup",
                 COMPENSATE_IDEMPOTENT, COMPLETE);
 
-        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_DURING_CLEANUP.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_DURING_CLEANUP);
 
         try {
             lraClient.cancelLRA(nested);
@@ -61,7 +61,7 @@ class NestedCompensateIT extends TestBase {
         URI nested = prepareNestedLra(parent, "nested-idempotent-after-save",
                 COMPENSATE_IDEMPOTENT, COMPLETE);
 
-        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_SAVE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_SAVE);
 
         try {
             lraClient.cancelLRA(nested);
@@ -86,7 +86,7 @@ class NestedCompensateIT extends TestBase {
         URI nested = prepareNestedLra(parent, "nested-idempotent-before-save",
                 COMPENSATE_IDEMPOTENT, COMPLETE);
 
-        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_BEFORE_SAVE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_BEFORE_SAVE);
 
         try {
             lraClient.cancelLRA(nested);
@@ -109,7 +109,7 @@ class NestedCompensateIT extends TestBase {
         URI nested = prepareNestedLra(parent, "nested-async-after-save",
                 COMPENSATE_ASYNC, COMPLETE, STATUS_FOR_ASYNC);
 
-        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_SAVE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_SAVE);
 
         try {
             lraClient.cancelLRA(nested);
@@ -129,7 +129,7 @@ class NestedCompensateIT extends TestBase {
         URI nested = prepareNestedLra(parent, "nested-async-duplicate",
                 COMPENSATE_ASYNC, COMPLETE, STATUS_FOR_ASYNC);
 
-        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_DURING_CLEANUP.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_DURING_CLEANUP);
 
         try {
             lraClient.cancelLRA(nested);
@@ -161,7 +161,7 @@ class NestedCompensateIT extends TestBase {
         URI nested = prepareNestedLra(parent, "nested-async-after-response",
                 COMPENSATE_ASYNC, COMPLETE, STATUS_FOR_ASYNC);
 
-        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_PARTICIPANT_RESPONSE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_PARTICIPANT_RESPONSE);
 
         try {
             lraClient.cancelLRA(nested);
@@ -191,7 +191,7 @@ class NestedCompensateIT extends TestBase {
         URI nested = prepareNestedLra(parent, "nested-crash-after-response",
                 COMPENSATE_IDEMPOTENT, COMPLETE);
 
-        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_PARTICIPANT_RESPONSE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_PARTICIPANT_RESPONSE);
 
         try {
             lraClient.cancelLRA(nested);

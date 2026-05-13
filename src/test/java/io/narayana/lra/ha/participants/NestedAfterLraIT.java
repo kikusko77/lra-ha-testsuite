@@ -99,7 +99,7 @@ class NestedAfterLraIT extends TestBase {
         cancel(nested);
         waitForNoActiveLra(nested, LRA_GONE_HAPPY_PATH_MS);
 
-        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_SAVE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_SAVE);
         cancel(parent);
 
         ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
@@ -118,7 +118,7 @@ class NestedAfterLraIT extends TestBase {
         close(nested);
         waitForNoActiveLra(nested, LRA_GONE_HAPPY_PATH_MS);
 
-        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_DURING_CLEANUP.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_DURING_CLEANUP);
         close(parent);
 
         ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);

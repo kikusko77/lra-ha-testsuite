@@ -19,7 +19,7 @@ class StartLraIT extends TestBase {
     void testStartLraDuplicates() {
         log.info("StartLraIT: testStartLraDuplicates");
         injectResetAll();
-        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.START.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.START);
         URI lra = lraClient.startLRA(
                 null,
                 Participant.class.getName() + "#start-duplicates",

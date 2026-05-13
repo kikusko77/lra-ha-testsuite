@@ -33,7 +33,7 @@ class NestedStartLraIT extends TestBase {
         injectResetAll();
 
         URI parent = startTopLra("start-nested-dup");
-        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.START.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.START);
 
         URI nested = lraClient.startLRA(
                 parent,

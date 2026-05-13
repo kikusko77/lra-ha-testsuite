@@ -66,7 +66,7 @@ class LeaveIT extends TestBase {
 
         callLeave(lra);
 
-        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_BEFORE_SAVE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_BEFORE_SAVE);
 
         try {
             lraClient.cancelLRA(lra);
@@ -89,7 +89,7 @@ class LeaveIT extends TestBase {
 
         callLeave(lra);
 
-        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_SAVE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_SAVE);
 
         try {
             lraClient.cancelLRA(lra);
@@ -112,7 +112,7 @@ class LeaveIT extends TestBase {
 
         callLeave(lra);
 
-        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_SAVE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_SAVE);
 
         try {
             lraClient.closeLRA(lra);
@@ -133,7 +133,7 @@ class LeaveIT extends TestBase {
         log.info("LeaveIT: testLeave_coordinatorCrashBeforeSave_cancelDoesNotCallCompensate");
         URI lra = prepareLeaveLra("leave-itself-crash-before-save-cancel");
 
-        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.LEAVE_BEFORE_SAVE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.LEAVE_BEFORE_SAVE);
 
         triggerLeaveViaRetry(lra);
 
@@ -155,7 +155,7 @@ class LeaveIT extends TestBase {
         log.info("LeaveIT: testLeave_coordinatorCrashAfterSave_cancelDoesNotCallCompensate");
         URI lra = prepareLeaveLra("leave-itself-crash-after-save-cancel");
 
-        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.LEAVE_AFTER_SAVE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.LEAVE_AFTER_SAVE);
 
         triggerLeaveViaRetry(lra);
 
@@ -177,7 +177,7 @@ class LeaveIT extends TestBase {
         log.info("LeaveIT: testLeave_coordinatorCrashBeforeSave_closeDoesNotCallComplete");
         URI lra = prepareLeaveLra("leave-itself-crash-before-save-close");
 
-        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.LEAVE_BEFORE_SAVE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.LEAVE_BEFORE_SAVE);
 
         triggerLeaveViaRetry(lra);
 
@@ -199,7 +199,7 @@ class LeaveIT extends TestBase {
         log.info("LeaveIT: testLeave_coordinatorCrashAfterSave_closeDoesNotCallComplete");
         URI lra = prepareLeaveLra("leave-itself-crash-after-save-close");
 
-        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.LEAVE_AFTER_SAVE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.LEAVE_AFTER_SAVE);
 
         triggerLeaveViaRetry(lra);
 

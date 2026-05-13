@@ -36,7 +36,7 @@ class ForgetIT extends TestBase {
                 "forget-compensate-after-save",
                 STATUS_FOR_FORGET_COMPENSATE);
 
-        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_SAVE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_SAVE);
 
         try {
             lraClient.cancelLRA(lra);
@@ -64,7 +64,7 @@ class ForgetIT extends TestBase {
                 "forget-compensate-duplicate",
                 STATUS_FOR_FORGET_COMPENSATE);
 
-        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_DURING_CLEANUP.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_DURING_CLEANUP);
 
         try {
             lraClient.cancelLRA(lra);
@@ -93,7 +93,7 @@ class ForgetIT extends TestBase {
                 "forget-complete-after-save",
                 STATUS_FOR_FORGET_COMPLETE);
 
-        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_SAVE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_SAVE);
 
         try {
             lraClient.closeLRA(lra);
@@ -121,7 +121,7 @@ class ForgetIT extends TestBase {
                 "forget-complete-duplicate",
                 STATUS_FOR_FORGET_COMPLETE);
 
-        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_DURING_CLEANUP.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_DURING_CLEANUP);
 
         try {
             lraClient.closeLRA(lra);

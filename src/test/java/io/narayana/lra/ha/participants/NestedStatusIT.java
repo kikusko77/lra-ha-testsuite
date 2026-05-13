@@ -116,7 +116,7 @@ class NestedStatusIT extends TestBase {
         URI nested = prepareNestedLra(parent, "nested-status-compensate-gone-crash",
                 COMPENSATE_ASYNC_STATUS, COMPLETE, STATUS_GONE);
 
-        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_PARTICIPANT_RESPONSE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_PARTICIPANT_RESPONSE);
 
         try {
             lraClient.cancelLRA(nested);
@@ -149,7 +149,7 @@ class NestedStatusIT extends TestBase {
         URI nested = prepareNestedLra(parent, "nested-status-complete-intermediate-crash",
                 COMPENSATE, COMPLETE_ASYNC_STATUS, STATUS_INTERMEDIATE_COMPLETE);
 
-        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_PARTICIPANT_RESPONSE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_PARTICIPANT_RESPONSE);
 
         try {
             lraClient.closeLRA(nested);

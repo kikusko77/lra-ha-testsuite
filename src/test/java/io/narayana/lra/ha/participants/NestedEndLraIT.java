@@ -32,7 +32,7 @@ class NestedEndLraIT extends TestBase {
         URI parent = startTopLra("end-nested-cancel-before");
         URI nested = prepareNestedLra(parent, "end-nested-cancel-before", COMPENSATE, COMPLETE);
 
-        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_BEFORE_SAVE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_BEFORE_SAVE);
 
         assertDoesNotThrow(() -> lraClient.cancelLRA(nested));
 
@@ -46,7 +46,7 @@ class NestedEndLraIT extends TestBase {
         URI parent = startTopLra("end-nested-cancel-after");
         URI nested = prepareNestedLra(parent, "end-nested-cancel-after", COMPENSATE, COMPLETE);
 
-        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_SAVE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_SAVE);
 
         try {
             lraClient.cancelLRA(nested);
@@ -68,7 +68,7 @@ class NestedEndLraIT extends TestBase {
         URI parent = startTopLra("end-nested-close-before");
         URI nested = prepareNestedLra(parent, "end-nested-close-before", COMPENSATE, COMPLETE);
 
-        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_BEFORE_SAVE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_BEFORE_SAVE);
 
         assertDoesNotThrow(() -> lraClient.closeLRA(nested));
 
@@ -82,7 +82,7 @@ class NestedEndLraIT extends TestBase {
         URI parent = startTopLra("end-nested-close-after");
         URI nested = prepareNestedLra(parent, "end-nested-close-after", COMPENSATE, COMPLETE);
 
-        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_SAVE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_SAVE);
 
         try {
             lraClient.closeLRA(nested);
@@ -104,7 +104,7 @@ class NestedEndLraIT extends TestBase {
         URI parent = startTopLra("end-nested-cancel-cleanup");
         URI nested = prepareNestedLra(parent, "end-nested-cancel-cleanup", COMPENSATE, COMPLETE);
 
-        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_DURING_CLEANUP.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_DURING_CLEANUP);
 
         try {
             lraClient.cancelLRA(nested);
@@ -125,7 +125,7 @@ class NestedEndLraIT extends TestBase {
         URI parent = startTopLra("end-nested-close-cleanup");
         URI nested = prepareNestedLra(parent, "end-nested-close-cleanup", COMPENSATE, COMPLETE);
 
-        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_DURING_CLEANUP.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_DURING_CLEANUP);
 
         try {
             lraClient.closeLRA(nested);
@@ -195,7 +195,7 @@ class NestedEndLraIT extends TestBase {
         assertDoesNotThrow(() -> lraClient.closeLRA(nested));
         waitForCallCount(nested, 1, LRA_GONE_HAPPY_PATH_MS);
 
-        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_SAVE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_SAVE);
 
         try {
             lraClient.cancelLRA(parent);

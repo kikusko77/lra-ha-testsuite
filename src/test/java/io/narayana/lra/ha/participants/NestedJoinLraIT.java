@@ -38,7 +38,7 @@ class NestedJoinLraIT extends TestBase {
 
         URI injected = nextRoutedCoordinator();
         log.infof("Injecting JOIN_AFTER_SAVE on coordinator %s", injected);
-        enableFailurePoint(injected, FailurePoint.JOIN_AFTER_SAVE.name());
+        enableFailurePoint(injected, FailurePoint.JOIN_AFTER_SAVE);
 
         URI recoveryUrl = lraClient.joinLRA(nested, 30L, compensateUri, completeUri,
                 null, null, null, null, new StringBuilder());
@@ -66,7 +66,7 @@ class NestedJoinLraIT extends TestBase {
 
         URI injected = nextRoutedCoordinator();
         log.infof("Injecting JOIN_BEFORE_SAVE on coordinator %s", injected);
-        enableFailurePoint(injected, FailurePoint.JOIN_BEFORE_SAVE.name());
+        enableFailurePoint(injected, FailurePoint.JOIN_BEFORE_SAVE);
 
         URI recoveryUrl = lraClient.joinLRA(nested, 30L, compensateUri, completeUri,
                 null, null, null, null, new StringBuilder());

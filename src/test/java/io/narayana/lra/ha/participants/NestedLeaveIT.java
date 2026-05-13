@@ -65,7 +65,7 @@ class NestedLeaveIT extends TestBase {
 
         callLeave(nested);
 
-        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_BEFORE_SAVE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_BEFORE_SAVE);
 
         try {
             lraClient.cancelLRA(nested);
@@ -89,7 +89,7 @@ class NestedLeaveIT extends TestBase {
 
         callLeave(nested);
 
-        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_SAVE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_SAVE);
 
         try {
             lraClient.cancelLRA(nested);
@@ -114,7 +114,7 @@ class NestedLeaveIT extends TestBase {
 
         callLeave(nested);
 
-        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_SAVE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_SAVE);
 
         try {
             lraClient.closeLRA(nested);
@@ -140,7 +140,7 @@ class NestedLeaveIT extends TestBase {
         String compensatorLink = buildCompensatorLink(
                 participantUri(COMPENSATE), participantUri(COMPLETE));
 
-        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.LEAVE_BEFORE_SAVE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.LEAVE_BEFORE_SAVE);
 
         try {
             lraClient.leaveLRA(nested, compensatorLink);
@@ -172,7 +172,7 @@ class NestedLeaveIT extends TestBase {
         String compensatorLink = buildCompensatorLink(
                 participantUri(COMPENSATE), participantUri(COMPLETE));
 
-        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.LEAVE_AFTER_SAVE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.LEAVE_AFTER_SAVE);
 
         try {
             lraClient.leaveLRA(nested, compensatorLink);
@@ -204,7 +204,7 @@ class NestedLeaveIT extends TestBase {
         String compensatorLink = buildCompensatorLink(
                 participantUri(COMPENSATE), participantUri(COMPLETE));
 
-        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.LEAVE_BEFORE_SAVE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.LEAVE_BEFORE_SAVE);
 
         try {
             lraClient.leaveLRA(nested, compensatorLink);
@@ -236,7 +236,7 @@ class NestedLeaveIT extends TestBase {
         String compensatorLink = buildCompensatorLink(
                 participantUri(COMPENSATE), participantUri(COMPLETE));
 
-        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.LEAVE_AFTER_SAVE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.LEAVE_AFTER_SAVE);
 
         try {
             lraClient.leaveLRA(nested, compensatorLink);

@@ -156,7 +156,7 @@ class StatusIT extends TestBase {
                 COMPLETE,
                 STATUS_GONE);
 
-        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_PARTICIPANT_RESPONSE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_PARTICIPANT_RESPONSE);
 
         try {
             lraClient.cancelLRA(lra);
@@ -196,7 +196,7 @@ class StatusIT extends TestBase {
                 COMPLETE_ASYNC_STATUS,
                 STATUS_INTERMEDIATE_COMPLETE);
 
-        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_PARTICIPANT_RESPONSE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_PARTICIPANT_RESPONSE);
 
         try {
             lraClient.closeLRA(lra);

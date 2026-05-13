@@ -152,12 +152,12 @@ public abstract class TestBase implements ParticipantEndpoints {
         return new ArrayList<>(all);
     }
 
-    protected void enableFailurePoint(URI coordinatorBase, String point) {
-        callInject(coordinatorBase, point, "enable");
+    protected void enableFailurePoint(URI coordinatorBase, FailurePoint point) {
+        callInject(coordinatorBase, point.name(), "enable");
     }
 
-    protected void disableFailurePoint(URI coordinatorBase, String point) {
-        callInject(coordinatorBase, point, "disable");
+    protected void disableFailurePoint(URI coordinatorBase, FailurePoint point) {
+        callInject(coordinatorBase, point.name(), "disable");
     }
 
     protected void injectReset(URI coordinatorBase) {

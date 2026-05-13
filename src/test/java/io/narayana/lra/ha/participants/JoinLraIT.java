@@ -40,7 +40,7 @@ class JoinLraIT extends TestBase {
 
         URI coordinatorWithFailure = nextRoutedCoordinator();
         log.infof("Injecting JOIN_AFTER_SAVE on coordinator %s", coordinatorWithFailure);
-        enableFailurePoint(coordinatorWithFailure, FailurePoint.JOIN_AFTER_SAVE.name());
+        enableFailurePoint(coordinatorWithFailure, FailurePoint.JOIN_AFTER_SAVE);
         log.info("Injected join hold, calling joinLRA again (same participant, will timeout+retry)");
 
         URI recoveryUrl = lraClient.joinLRA(lra, 30L, compensateUri, completeUri,
@@ -77,7 +77,7 @@ class JoinLraIT extends TestBase {
 
         URI coordinatorWithFailure = nextRoutedCoordinator();
         log.infof("Injecting JOIN_BEFORE_SAVE on coordinator %s", coordinatorWithFailure);
-        enableFailurePoint(coordinatorWithFailure, FailurePoint.JOIN_BEFORE_SAVE.name());
+        enableFailurePoint(coordinatorWithFailure, FailurePoint.JOIN_BEFORE_SAVE);
 
         URI recoveryUrl = lraClient.joinLRA(lra, 30L, compensateUri, completeUri,
                 null, null, null, null, new StringBuilder());

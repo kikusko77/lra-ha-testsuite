@@ -106,7 +106,7 @@ class AfterLraIT extends TestBase {
                 participantClientId("after-crash-after-save"),
                 COMPENSATE, COMPLETE);
 
-        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_SAVE.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_SAVE);
 
         try {
             lraClient.cancelLRA(lra);
@@ -138,7 +138,7 @@ class AfterLraIT extends TestBase {
                 participantClientId("after-crash-during-cleanup"),
                 COMPENSATE, COMPLETE);
 
-        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_DURING_CLEANUP.name());
+        enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_DURING_CLEANUP);
 
         try {
             lraClient.closeLRA(lra);
