@@ -64,6 +64,8 @@ class AfterLraIT extends TestBase {
 
         assertEquals(LRAStatus.FailedToClose.name(), getAfterLraStatus(lra),
                 "@AfterLRA must receive FailedToClose when @Complete permanently fails");
+        assertEquals(1, getAfterCallCount(lra),
+                "@AfterLRA must be called exactly once even on failed close");
     }
 
     @Test
@@ -85,6 +87,8 @@ class AfterLraIT extends TestBase {
 
         assertEquals(LRAStatus.FailedToCancel.name(), getAfterLraStatus(lra),
                 "@AfterLRA must receive FailedToCancel when @Compensate permanently fails");
+        assertEquals(1, getAfterCallCount(lra),
+                "@AfterLRA must be called exactly once even on failed cancel");
     }
 
     // -------------------------------------------------------------------------
@@ -149,6 +153,8 @@ class AfterLraIT extends TestBase {
 
         assertEquals(LRAStatus.Closed.name(), getAfterLraStatus(lra),
                 "@AfterLRA must be delivered with Closed even when coordinator crashed during cleanup");
+        assertEquals(1, getAfterCallCount(lra),
+                "@AfterLRA must be called exactly once after crash-during-cleanup recovery");
     }
 
 }
