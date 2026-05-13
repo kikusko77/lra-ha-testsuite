@@ -134,6 +134,10 @@ class CompensateIT extends TestBase {
         ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
         waitForNoActiveLra(lra, LRA_GONE_AFTER_RECOVERY_MS);
         assertNoActiveLras();
+
+        int compensateCalls = getAsyncCallCount(lra);
+        assertEquals(1, compensateCalls,
+                "Async @Compensate must be called exactly once after crash recovery, got " + compensateCalls);
     }
 
     /**
