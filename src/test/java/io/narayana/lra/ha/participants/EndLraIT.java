@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 class EndLraIT extends TestBase {
 
     private static final Logger log = Logger.getLogger(EndLraIT.class);
+    private static final long LRA_GONE_FAST_MS = 5_000;
 
     @Test
     void testCancelLraBeforeSave() {
@@ -25,7 +26,7 @@ class EndLraIT extends TestBase {
 
         assertDoesNotThrow(() -> lraClient.cancelLRA(lra));
 
-        waitForNoActiveLra(lra, 5_000);
+        waitForNoActiveLra(lra, LRA_GONE_FAST_MS);
 
         List<String> activeIds = getActiveIds();
         long unique = activeIds.size();
@@ -49,7 +50,7 @@ class EndLraIT extends TestBase {
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown", lra);
         }
 
-        waitForNoActiveLra(lra, 5_000);
+        waitForNoActiveLra(lra, LRA_GONE_FAST_MS);
 
         List<String> activeIds = getActiveIds();
         long unique = activeIds.size();
@@ -66,7 +67,7 @@ class EndLraIT extends TestBase {
 
         assertDoesNotThrow(() -> lraClient.closeLRA(lra));
 
-        waitForNoActiveLra(lra, 5_000);
+        waitForNoActiveLra(lra, LRA_GONE_FAST_MS);
 
         List<String> activeIds = getActiveIds();
         long unique = activeIds.size();
@@ -90,7 +91,7 @@ class EndLraIT extends TestBase {
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown", lra);
         }
 
-        waitForNoActiveLra(lra, 5_000);
+        waitForNoActiveLra(lra, LRA_GONE_FAST_MS);
 
         List<String> activeIds = getActiveIds();
         long unique = activeIds.size();
@@ -115,7 +116,7 @@ class EndLraIT extends TestBase {
                     lra);
         }
 
-        waitForNoActiveLra(lra, 5_000);
+        waitForNoActiveLra(lra, LRA_GONE_FAST_MS);
 
         List<String> activeIds = getActiveIds();
         long unique = activeIds.size();
@@ -136,7 +137,7 @@ class EndLraIT extends TestBase {
             log.infof("cancelLRA returned 404 after failover, treating as already finished: %s", lra);
         }
 
-        waitForNoActiveLra(lra, 5_000);
+        waitForNoActiveLra(lra, LRA_GONE_FAST_MS);
 
         List<String> activeIds = getActiveIds();
         long unique = activeIds.size();
@@ -161,7 +162,7 @@ class EndLraIT extends TestBase {
                     lra);
         }
 
-        waitForNoActiveLra(lra, 5_000);
+        waitForNoActiveLra(lra, LRA_GONE_FAST_MS);
 
         List<String> activeIds = getActiveIds();
         long unique = activeIds.size();
@@ -185,7 +186,7 @@ class EndLraIT extends TestBase {
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown", lra);
         }
 
-        waitForNoActiveLra(lra, 5_000);
+        waitForNoActiveLra(lra, LRA_GONE_FAST_MS);
 
         List<String> activeIds = getActiveIds();
         long unique = activeIds.size();

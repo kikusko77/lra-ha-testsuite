@@ -145,7 +145,7 @@ class ForgetIT extends TestBase {
 
     private void waitForFailedAsyncForget(URI lra, long forgetTimeoutMs) {
         waitForForgetCallCount(lra, 1, forgetTimeoutMs);
-        waitForNoActiveLra(lra, 10_000);
+        waitForNoActiveLra(lra, LRA_GONE_HAPPY_PATH_MS);
         assertNoActiveLras();
     }
 
