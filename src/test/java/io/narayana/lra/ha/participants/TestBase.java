@@ -160,6 +160,24 @@ public abstract class TestBase implements ParticipantEndpoints {
         callInject(coordinatorBase, point.name(), "disable");
     }
 
+    protected void cancel(URI lra) {
+        try {
+            lraClient.cancelLRA(lra);
+        } catch (jakarta.ws.rs.WebApplicationException e) {
+            LOG.infof("cancelLRA returned %s for %s",
+                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown", lra);
+        }
+    }
+
+    protected void close(URI lra) {
+        try {
+            lraClient.closeLRA(lra);
+        } catch (jakarta.ws.rs.WebApplicationException e) {
+            LOG.infof("closeLRA returned %s for %s",
+                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown", lra);
+        }
+    }
+
     protected void injectReset(URI coordinatorBase) {
         Response response = null;
         try {

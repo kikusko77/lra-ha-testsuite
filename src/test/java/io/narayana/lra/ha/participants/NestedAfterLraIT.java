@@ -145,25 +145,4 @@ class NestedAfterLraIT extends TestBase {
                     + "(expected status would have been %s)", nested, expected);
         }
     }
-
-    private void close(URI lra) {
-        try {
-            lraClient.closeLRA(lra);
-        } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.infof("closeLRA returned %s for %s",
-                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown", lra);
-        }
-    }
-
-    private void cancel(URI lra) {
-        try {
-            lraClient.cancelLRA(lra);
-        } catch (jakarta.ws.rs.NotFoundException e) {
-            log.infof("cancelLRA 404 for %s, treating as already processed", lra);
-        } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.infof("cancelLRA returned %s for %s",
-                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown", lra);
-        }
-    }
-
 }
