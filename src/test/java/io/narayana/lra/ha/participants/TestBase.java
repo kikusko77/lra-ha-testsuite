@@ -311,12 +311,25 @@ public abstract class TestBase implements ParticipantEndpoints {
         Assertions.assertEquals(0, activeIds.size(), "Expected no active LRAs but got: " + activeIds);
     }
 
+    protected PrepareLraBuilder prepareLra() {
+        return new PrepareLraBuilder(this);
+    }
+
     protected URI prepareLra(String clientIdPrefix, String compensatePath, String completePath) {
-        return prepareLra(null, clientIdPrefix, compensatePath, completePath, null, null);
+        return prepareLra()
+                .clientId(clientIdPrefix)
+                .compensate(compensatePath)
+                .complete(completePath)
+                .start();
     }
 
     protected URI prepareLra(String clientIdPrefix, String compensatePath, String completePath, String statusPath) {
-        return prepareLra(null, clientIdPrefix, compensatePath, completePath, null, statusPath);
+        return prepareLra()
+                .clientId(clientIdPrefix)
+                .compensate(compensatePath)
+                .complete(completePath)
+                .status(statusPath)
+                .start();
     }
 
     protected URI prepareLra(
@@ -325,7 +338,13 @@ public abstract class TestBase implements ParticipantEndpoints {
             String completePath,
             String forgetPath,
             String statusPath) {
-        return prepareLra(null, clientIdPrefix, compensatePath, completePath, forgetPath, statusPath);
+        return prepareLra()
+                .clientId(clientIdPrefix)
+                .compensate(compensatePath)
+                .complete(completePath)
+                .forget(forgetPath)
+                .status(statusPath)
+                .start();
     }
 
     protected URI prepareLra(
@@ -335,21 +354,14 @@ public abstract class TestBase implements ParticipantEndpoints {
             String completePath,
             String forgetPath,
             String statusPath) {
-        injectResetAll();
-
-        URI lra = startLra(parentLRA, clientIdPrefix);
-        lrasToAfterFinish.add(lra);
-
-        URI compensate = participantUri(compensatePath);
-        URI complete = participantUri(completePath);
-        URI forget = forgetPath == null ? null : participantUri(forgetPath);
-        URI status = statusPath == null ? null : participantUri(statusPath);
-        URI recovery = lraClient.joinLRA(lra, 30L, compensate, complete, forget, null, null, status,
-                new StringBuilder());
-
-        LOG.infof("Enrolled compensate=%s, complete=%s, forget=%s, status=%s, recoveryUrl=%s",
-                compensate, complete, forget, status, recovery);
-        return lra;
+        return prepareLra()
+                .parent(parentLRA)
+                .clientId(clientIdPrefix)
+                .compensate(compensatePath)
+                .complete(completePath)
+                .forget(forgetPath)
+                .status(statusPath)
+                .start();
     }
 
     protected URI prepareCompensateLra(String scenario, String compensatePath) {
@@ -485,21 +497,12 @@ public abstract class TestBase implements ParticipantEndpoints {
             String clientIdPrefix,
             String compensatePath,
             String completePath) {
-        injectResetAll();
-
-        URI lra = startLra(clientIdPrefix);
-        lrasToAfterFinish.add(lra);
-
-        URI compensate = participantUri(compensatePath);
-        URI complete = participantUri(completePath);
-        URI after = participantUri(AFTER_LRA);
-
-        URI recovery = lraClient.joinLRA(lra, 30L, compensate, complete, null, null, after, null,
-                new StringBuilder());
-
-        LOG.infof("Enrolled compensate=%s, complete=%s, after=%s, recoveryUrl=%s",
-                compensate, complete, after, recovery);
-        return lra;
+        return prepareLra()
+                .clientId(clientIdPrefix)
+                .compensate(compensatePath)
+                .complete(completePath)
+                .after(AFTER_LRA)
+                .start();
     }
 
     protected URI startTopLra(String scenario) {
@@ -546,18 +549,12 @@ public abstract class TestBase implements ParticipantEndpoints {
             String scenario,
             String compensatePath,
             String completePath) {
-        URI nested = startLra(parent, participantClientId(scenario) + "-nested");
-        lrasToAfterFinish.add(nested);
-
-        URI compensate = participantUri(compensatePath);
-        URI complete = participantUri(completePath);
-        URI after = participantUri(AFTER_LRA);
-
-        URI recovery = lraClient.joinLRA(nested, 30L, compensate, complete, null, null, after, null,
-                new StringBuilder());
-
-        LOG.infof("Enrolled NESTED compensate=%s, complete=%s, after=%s, parent=%s, nested=%s, recoveryUrl=%s",
-                compensate, complete, after, parent, nested, recovery);
-        return nested;
+        return prepareLra()
+                .parent(parent)
+                .clientId(participantClientId(scenario) + "-nested")
+                .compensate(compensatePath)
+                .complete(completePath)
+                .after(AFTER_LRA)
+                .start();
     }
 }
