@@ -36,10 +36,7 @@ class NestedAfterLraIT extends TestBase {
         cancel(parent);
         waitForAfterCallCount(nested, 1, LRA_GONE_AFTER_RECOVERY_MS);
 
-        assertEquals(LRAStatus.Cancelled.name(), getAfterLraStatus(nested),
-                "@AfterLRA must receive Cancelled after parent cancel cascades");
-        assertEquals(1, getAfterCallCount(nested),
-                "@AfterLRA must be called exactly once in the happy path");
+        assertAfterLraOutcome(nested, LRAStatus.Cancelled, 1);
     }
 
     @Test
@@ -57,7 +54,7 @@ class NestedAfterLraIT extends TestBase {
         cancel(parent);
         waitForAfterCallCount(nested, 1, LRA_GONE_AFTER_RECOVERY_MS);
 
-        assertAfterLraStatusOrHaGap(nested, LRAStatus.Cancelled);
+        assertAfterLraOutcomeOrHaGap(nested, LRAStatus.Cancelled);
     }
 
     @Test
@@ -73,7 +70,7 @@ class NestedAfterLraIT extends TestBase {
         close(parent);
         waitForAfterCallCount(nested, 1, LRA_GONE_AFTER_RECOVERY_MS);
 
-        assertAfterLraStatusOrHaGap(nested, LRAStatus.FailedToClose);
+        assertAfterLraOutcomeOrHaGap(nested, LRAStatus.FailedToClose);
     }
 
     @Test
@@ -89,8 +86,7 @@ class NestedAfterLraIT extends TestBase {
         cancel(parent);
         waitForAfterCallCount(nested, 1, LRA_GONE_AFTER_RECOVERY_MS);
 
-        assertEquals(LRAStatus.FailedToCancel.name(), getAfterLraStatus(nested),
-                "@AfterLRA must receive FailedToCancel when nested @Compensate permanently fails");
+        assertAfterLraOutcome(nested, LRAStatus.FailedToCancel, 1);
     }
 
     @Test
@@ -109,10 +105,7 @@ class NestedAfterLraIT extends TestBase {
         ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
         waitForAfterCallCount(nested, 1, LRA_GONE_AFTER_RECOVERY_MS);
 
-        assertEquals(LRAStatus.Cancelled.name(), getAfterLraStatus(nested),
-                "@AfterLRA must still be delivered with Cancelled after parent crash-and-recovery");
-        assertEquals(1, getAfterCallCount(nested),
-                "@AfterLRA must be called exactly once after recovery");
+        assertAfterLraOutcome(nested, LRAStatus.Cancelled, 1);
     }
 
     @Test
@@ -131,10 +124,18 @@ class NestedAfterLraIT extends TestBase {
         ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
         waitForAfterCallCount(nested, 1, LRA_GONE_AFTER_RECOVERY_MS);
 
-        assertAfterLraStatusOrHaGap(nested, LRAStatus.Closed);
+        assertAfterLraOutcomeOrHaGap(nested, LRAStatus.Closed);
     }
 
-    private void assertAfterLraStatusOrHaGap(URI nested, LRAStatus expected) {
+    private void assertAfterLraOutcome(URI nested, LRAStatus expectedStatus, int expectedCallCount) {
+        int callCount = getAfterCallCount(nested);
+        assertEquals(expectedStatus.name(), getAfterLraStatus(nested),
+                "@AfterLRA must receive " + expectedStatus + ", got " + getAfterLraStatus(nested));
+        assertEquals(expectedCallCount, callCount,
+                "@AfterLRA must be called " + expectedCallCount + " time(s), got " + callCount);
+    }
+
+    private void assertAfterLraOutcomeOrHaGap(URI nested, LRAStatus expected) {
         int callCount = getAfterCallCount(nested);
         if (callCount > 0) {
             assertEquals(expected.name(), getAfterLraStatus(nested),
