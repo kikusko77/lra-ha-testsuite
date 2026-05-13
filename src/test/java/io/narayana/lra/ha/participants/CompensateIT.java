@@ -27,6 +27,26 @@ class CompensateIT extends TestBase {
     private static final long CRASH_RECOVERY_TIMEOUT_S = 15;
     private static final long RECOVERY_SCAN_WAIT_MS = 20_000;
 
+    private void assertSyncCompensateOutcome(URI lra, int minCallCount, int expectedWorkDone) {
+        int callCount = getCallCount(lra);
+        int workDone = getIdempotentWorkDone(lra);
+        log.infof("After scenario: callCount=%s, workDone=%s", callCount, workDone);
+        assertTrue(callCount >= minCallCount,
+                "Compensate must have been called at least " + minCallCount + " times, got " + callCount);
+        assertEquals(expectedWorkDone, workDone,
+                "Side effect count must equal " + expectedWorkDone + ", got " + workDone);
+    }
+
+    private void assertAsyncCompensateOutcome(URI lra, int expectedCalls, int minStatusCalls) {
+        int compensateCalls = getAsyncCallCount(lra);
+        int statusCalls = getAsyncStatusCallCount(lra);
+        log.infof("After async scenario: compensateCalls=%s, statusCalls=%s", compensateCalls, statusCalls);
+        assertEquals(expectedCalls, compensateCalls,
+                "Async @Compensate must be called exactly " + expectedCalls + " times, got " + compensateCalls);
+        assertTrue(statusCalls >= minStatusCalls,
+                "@Status must be polled at least " + minStatusCalls + " times, got " + statusCalls);
+    }
+
     /**
      * Crash hits after the participant callback already ran and the outcome was persisted.
      * The retry triggered by recovery must not produce a second side effect.
@@ -48,16 +68,9 @@ class CompensateIT extends TestBase {
         ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
         waitForNoActiveLra(lra, LRA_GONE_AFTER_RECOVERY_MS);
 
-        int callCount = getCallCount(lra);
-        int workDone = getIdempotentWorkDone(lra);
-
-        log.infof("After crash recovery: callCount=%s, workDone=%s", callCount, workDone);
-
-        // callCount is >= 1: called at least once before the crash. May be 2 if the
-        // crash happened before Arjuna could persist FINISH_OK (timing-dependent).
-        assertTrue(callCount >= 1, "Compensate must have been called at least once, got " + callCount);
-        // workDone must always be 1 — idempotency guard must fire on any retry.
-        assertEquals(1, workDone, "Side effect must be performed exactly once regardless of retry count");
+        // callCount may be 2 if the crash happened before Arjuna could persist
+        // FINISH_OK (timing-dependent); workDone must always be 1.
+        assertSyncCompensateOutcome(lra, /* minCallCount */ 1, /* workDone */ 1);
     }
 
     @Test
@@ -79,11 +92,7 @@ class CompensateIT extends TestBase {
         ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
         waitForNoActiveLra(lra, LRA_GONE_AFTER_RECOVERY_MS);
 
-        int callCount = getCallCount(lra);
-        assertTrue(callCount >= 1,
-                "Compensate must have been called at least once after crash-and-recovery, got " + callCount);
-        assertEquals(1, getIdempotentWorkDone(lra),
-                "Side effect must be performed exactly once after crash-and-recovery");
+        assertSyncCompensateOutcome(lra, /* minCallCount */ 1, /* workDone */ 1);
     }
 
     /**
@@ -107,11 +116,7 @@ class CompensateIT extends TestBase {
         ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
         waitForNoActiveLra(lra, LRA_GONE_AFTER_RECOVERY_MS);
 
-        int callCount = getCallCount(lra);
-        assertTrue(callCount >= 1,
-                "Compensate must have been called at least once after timeout cancel, got " + callCount);
-        assertEquals(1, getIdempotentWorkDone(lra),
-                "Side effect must be performed once after LRA is eventually cancelled via timeout");
+        assertSyncCompensateOutcome(lra, /* minCallCount */ 1, /* workDone */ 1);
     }
 
     @Test
@@ -135,9 +140,7 @@ class CompensateIT extends TestBase {
         waitForNoActiveLra(lra, LRA_GONE_AFTER_RECOVERY_MS);
         assertNoActiveLras();
 
-        int compensateCalls = getAsyncCallCount(lra);
-        assertEquals(1, compensateCalls,
-                "Async @Compensate must be called exactly once after crash recovery, got " + compensateCalls);
+        assertAsyncCompensateOutcome(lra, /* expectedCalls */ 1, /* minStatusCalls */ 1);
     }
 
     /**
@@ -165,15 +168,7 @@ class CompensateIT extends TestBase {
         waitForNoActiveLra(lra, LRA_GONE_AFTER_RECOVERY_MS);
         assertNoActiveLras();
 
-        int compensateCalls = getAsyncCallCount(lra);
-        int statusCalls = getAsyncStatusCallCount(lra);
-
-        log.infof("After async proxy failover: compensateCalls=%s, statusCalls=%s", compensateCalls, statusCalls);
-
-        assertEquals(1, compensateCalls,
-                "Async @Compensate should be called exactly once in END_DURING_CLEANUP failover");
-        assertTrue(statusCalls >= 1,
-                "Async duplicate path should poll @Status at least once, got " + statusCalls + " polls");
+        assertAsyncCompensateOutcome(lra, /* expectedCalls */ 1, /* minStatusCalls */ 1);
     }
 
     /**
@@ -203,17 +198,7 @@ class CompensateIT extends TestBase {
         waitForNoActiveLra(lra, LRA_GONE_AFTER_RECOVERY_MS);
         assertNoActiveLras();
 
-        int compensateCalls = getAsyncCallCount(lra);
-        int statusCalls = getAsyncStatusCallCount(lra);
-
-        log.infof("After async crash recovery: compensateCalls=%s, statusCalls=%s", compensateCalls, statusCalls);
-
-        assertEquals(1, compensateCalls,
-                "Async @Compensate should not be replayed after END_AFTER_PARTICIPANT_RESPONSE; got "
-                        + compensateCalls + " calls");
-        assertTrue(statusCalls >= 1,
-                "Recovery should resolve this path via pre-flight @Status after the crash, got " + statusCalls
-                        + " status polls");
+        assertAsyncCompensateOutcome(lra, /* expectedCalls */ 1, /* minStatusCalls */ 1);
     }
 
     /**
@@ -238,15 +223,7 @@ class CompensateIT extends TestBase {
         ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
         waitForNoActiveLra(lra, LRA_GONE_AFTER_RECOVERY_MS);
 
-        int callCount = getCallCount(lra);
-        int workDone = getIdempotentWorkDone(lra);
-
-        log.infof("After crash recovery: callCount=%s, workDone=%s", callCount, workDone);
-
-        assertTrue(callCount >= 1,
-                "Compensate must be called at least once before the LRA resolves, got " + callCount);
-        assertEquals(1, workDone,
-                "Side effect must be performed exactly once regardless of any recovery replay");
+        assertSyncCompensateOutcome(lra, /* minCallCount */ 1, /* workDone */ 1);
     }
 
     /**
