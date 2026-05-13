@@ -79,6 +79,9 @@ class CompensateIT extends TestBase {
         ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
         waitForNoActiveLra(lra, LRA_GONE_AFTER_RECOVERY_MS);
 
+        int callCount = getCallCount(lra);
+        assertTrue(callCount >= 1,
+                "Compensate must have been called at least once after crash-and-recovery, got " + callCount);
         assertEquals(1, getIdempotentWorkDone(lra),
                 "Side effect must be performed exactly once after crash-and-recovery");
     }
@@ -104,6 +107,9 @@ class CompensateIT extends TestBase {
         ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
         waitForNoActiveLra(lra, LRA_GONE_AFTER_RECOVERY_MS);
 
+        int callCount = getCallCount(lra);
+        assertTrue(callCount >= 1,
+                "Compensate must have been called at least once after timeout cancel, got " + callCount);
         assertEquals(1, getIdempotentWorkDone(lra),
                 "Side effect must be performed once after LRA is eventually cancelled via timeout");
     }
