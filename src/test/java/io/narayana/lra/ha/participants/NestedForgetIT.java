@@ -3,6 +3,7 @@ package io.narayana.lra.ha.participants;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import io.narayana.lra.LRAConstants;
 import io.quarkus.test.junit.QuarkusTest;
 import java.net.URI;
 import org.jboss.logging.Logger;
@@ -22,7 +23,6 @@ class NestedForgetIT extends TestBase {
 
     private static final Logger log = Logger.getLogger(NestedForgetIT.class);
     private static final long CRASH_RECOVERY_TIMEOUT_S = 30;
-    private static final long RECOVERY_SCAN_WAIT_MS = 120_000;
     private static final long CRASH_SCAN_WAIT_MS = 180_000;
 
     @Test
@@ -125,21 +125,27 @@ class NestedForgetIT extends TestBase {
         }
     }
 
-    private void waitForFailedAsyncForget(URI lra) {
-        waitForFailedAsyncForget(lra, RECOVERY_SCAN_WAIT_MS);
-    }
-
     private void waitForFailedAsyncForget(URI lra, long forgetTimeoutMs) {
         waitForForgetCallCount(lra, 1, forgetTimeoutMs);
         waitForNoActiveLra(lra, 10_000);
+
+        int forgetCount = getForgetCallCount(lra);
+        assertTrue(forgetCount >= 1,
+                "@Forget must fire for nested " + lra + " within " + forgetTimeoutMs
+                        + " ms, got " + forgetCount + " calls");
+        String lraUid = LRAConstants.getLRAUid(lra);
+        boolean stillActive = getAllActiveIdsAcrossCoordinators().stream()
+                .map(LRAConstants::getLRAUid)
+                .anyMatch(lraUid::equals);
+        assertTrue(!stillActive,
+                "Nested " + lra + " must leave the active list after @Forget");
     }
 
     private void assertForgetCalledAtLeastOnce(URI lra) {
         int forgetCount = getForgetCallCount(lra);
-        if (forgetCount == 0) {
-            log.warnf("HA cache-staleness gap: @Forget did not fire for nested %s — "
-                    + "single-coord ForgetIT covers the strong case", lra);
-        } else if (forgetCount > 1) {
+        assertTrue(forgetCount >= 1,
+                "@Forget must have fired at least once for nested " + lra + ", got " + forgetCount);
+        if (forgetCount > 1) {
             log.warnf("HA finding: @Forget called %s times for nested %s — coordinator duplicate-call detected",
                     forgetCount, lra);
         }
