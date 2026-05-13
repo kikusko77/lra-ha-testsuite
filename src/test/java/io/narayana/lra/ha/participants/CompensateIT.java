@@ -48,8 +48,10 @@ class CompensateIT extends TestBase {
     }
 
     /**
-     * Crash hits after the participant callback already ran and the outcome was persisted.
-     * The retry triggered by recovery must not produce a second side effect.
+     * Verifies participant-side idempotency under crash replay: the participant's
+     *  guard must suppress the duplicate side effect when
+     * crash-and-recovery causes {@code @Compensate} to be replayed. Crash hits
+     * after the original callback already ran and the outcome was persisted.
      */
     @Test
     void testIdempotentCompensate_coordinatorCrashDuringCleanup() {
