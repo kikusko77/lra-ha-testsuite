@@ -35,7 +35,7 @@ services:
       QUARKUS_TRANSACTION_MANAGER_OBJECT_STORE_CREATE_TABLE: "true"
     command: *coordinator-command
     extra_hosts:
-     - "host.docker.internal:192.168.65.254"
+      - "host.docker.internal:host-gateway"
 
   coordinator-2:
     image: local-coordinator:latest
@@ -53,7 +53,7 @@ services:
       QUARKUS_TRANSACTION_MANAGER_OBJECT_STORE_CREATE_TABLE: "false"
     command: *coordinator-command
     extra_hosts:
-     - "host.docker.internal:192.168.65.254"
+      - "host.docker.internal:host-gateway"
 
   coordinator-3:
     image: local-coordinator:latest
@@ -71,7 +71,7 @@ services:
       QUARKUS_TRANSACTION_MANAGER_OBJECT_STORE_CREATE_TABLE: "false"
     command: *coordinator-command
     extra_hosts:
-      - "host.docker.internal:192.168.65.254"
+      - "host.docker.internal:host-gateway"
 
   coordinator-4:
     image: local-coordinator:latest
@@ -89,4 +89,4 @@ services:
       QUARKUS_TRANSACTION_MANAGER_OBJECT_STORE_CREATE_TABLE: "false"
     command: *coordinator-command
     extra_hosts:
-      - "host.docker.internal:192.168.65.254"
+      - "host.docker.internal:host-gateway"
