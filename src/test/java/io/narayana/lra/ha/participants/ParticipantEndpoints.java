@@ -48,4 +48,5 @@ interface ParticipantEndpoints {
     String STATUS_INTERMEDIATE_COMPLETE_CALL_COUNT = "status-intermediate-complete-call-count";
     String AFTER_STATUS = "after-status";
     String AFTER_CALL_COUNT = "after-call-count";
+    String FAIL_CALL_COUNT = "fail-call-count";
 }

@@ -423,6 +423,12 @@ public abstract class TestBase implements ParticipantEndpoints {
                 .request().get(Integer.class);
     }
 
+    protected int getFailCallCount(URI lraId) {
+        return client.target(participantUri(FAIL_CALL_COUNT))
+                .queryParam("lraId", lraId.toASCIIString())
+                .request().get(Integer.class);
+    }
+
     protected int getIdempotentWorkDone(URI lraId) {
         return client.target(participantUri(IDEMPOTENT_WORK_DONE))
                 .queryParam("lraId", lraId.toASCIIString())

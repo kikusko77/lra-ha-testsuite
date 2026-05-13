@@ -34,6 +34,7 @@ public class CompensateParticipant {
     private final ConcurrentHashMap<String, AtomicInteger> asyncCallCounts = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, AtomicInteger> asyncStatusCallCounts = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, AtomicInteger> unreachableCallCounts = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, AtomicInteger> failCallCounts = new ConcurrentHashMap<>();
 
     @Compensate
     @PUT
@@ -69,7 +70,9 @@ public class CompensateParticipant {
     @PUT
     @Path("compensate-fail")
     public Response compensateFail(@HeaderParam(LRA.LRA_HTTP_CONTEXT_HEADER) URI lraId) {
-        log.infof("COMPENSATE-FAIL lraId=%s", lraId);
+        String uid = lraId.toASCIIString();
+        int n = failCallCounts.computeIfAbsent(uid, k -> new AtomicInteger()).incrementAndGet();
+        log.infof("COMPENSATE-FAIL lraId=%s call#%s", lraId, n);
         return Response.status(Response.Status.CONFLICT)
                 .entity(ParticipantStatus.FailedToCompensate.name())
                 .build();
@@ -124,6 +127,13 @@ public class CompensateParticipant {
     @Path("idempotent-work-done")
     public int idempotentWorkDone(@QueryParam("lraId") String lraId) {
         return idempotentWorkDone.contains(lraId) ? 1 : 0;
+    }
+
+    @GET
+    @Path("fail-call-count")
+    public int failCallCount(@QueryParam("lraId") String lraId) {
+        AtomicInteger c = failCallCounts.get(lraId);
+        return c == null ? 0 : c.get();
     }
 
     @GET

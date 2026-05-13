@@ -267,6 +267,11 @@ class CompensateIT extends TestBase {
 
         assertTrue(!stillActive,
                 "LRA should not be in the active list after FailedToCompensate; found in " + activeIds);
+
+        int failCalls = getFailCallCount(lra);
+        assertTrue(failCalls >= 1,
+                "@Compensate (fail variant) must have been called at least once before the LRA reaches FailedToCancel, got "
+                        + failCalls);
     }
 
 }
