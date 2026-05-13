@@ -1,11 +1,13 @@
 package io.narayana.lra.ha.participants;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.narayana.lra.LRAConstants;
 import io.quarkus.test.junit.QuarkusTest;
 import java.net.URI;
+import java.util.List;
 import org.jboss.logging.Logger;
 import org.junit.jupiter.api.Test;
 
@@ -217,10 +219,18 @@ class NestedEndLraIT extends TestBase {
 
     private void assertActiveContainsOnlyParent(URI parent) {
         String parentUid = LRAConstants.getLRAUid(parent);
-        boolean parentActive = getAllActiveIdsAcrossCoordinators().stream()
+        List<String> activeUids = getAllActiveIdsAcrossCoordinators().stream()
                 .map(LRAConstants::getLRAUid)
-                .anyMatch(parentUid::equals);
-        assertTrue(parentActive,
-                "Parent LRA " + parentUid + " must remain active after nested ends");
+                .toList();
+
+        long parentCount = activeUids.stream().filter(parentUid::equals).count();
+        assertEquals(1, parentCount,
+                "Parent LRA " + parentUid + " must remain active exactly once; got " + activeUids);
+
+        List<String> extras = activeUids.stream()
+                .filter(uid -> !uid.equals(parentUid))
+                .toList();
+        assertEquals(List.of(), extras,
+                "Only the parent LRA should be active; got extras " + extras);
     }
 }
