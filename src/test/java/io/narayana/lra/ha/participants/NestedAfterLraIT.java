@@ -128,11 +128,10 @@ class NestedAfterLraIT extends TestBase {
     }
 
     private void assertAfterLraOutcome(URI nested, LRAStatus expectedStatus, int expectedCallCount) {
-        int callCount = getAfterCallCount(nested);
+        assertCountStays("@AfterLRA call count for " + nested,
+                expectedCallCount, 2_000, () -> getAfterCallCount(nested));
         assertEquals(expectedStatus.name(), getAfterLraStatus(nested),
                 "@AfterLRA must receive " + expectedStatus + ", got " + getAfterLraStatus(nested));
-        assertEquals(expectedCallCount, callCount,
-                "@AfterLRA must be called " + expectedCallCount + " time(s), got " + callCount);
     }
 
     private void assertAfterLraOutcomeOrHaGap(URI nested, LRAStatus expected) {

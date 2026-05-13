@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BooleanSupplier;
+import java.util.function.IntSupplier;
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionTimeoutException;
 import org.jboss.logging.Logger;
@@ -273,6 +274,18 @@ public abstract class TestBase implements ParticipantEndpoints {
                     .until(condition::getAsBoolean);
         } catch (ConditionTimeoutException timeout) {
             LOG.warnf("Timed out waiting for %s: %s", description, timeout.getMessage());
+        }
+    }
+
+    protected static void assertCountStays(String description, int expected, long settleMs, IntSupplier getter) {
+        try {
+            Awaitility.await(description)
+                    .during(Duration.ofMillis(settleMs))
+                    .atMost(Duration.ofMillis(settleMs + 1_000))
+                    .until(() -> getter.getAsInt() == expected);
+        } catch (ConditionTimeoutException timeout) {
+            throw new AssertionError(description + ": expected " + expected
+                    + " to hold for " + settleMs + "ms, but observed " + getter.getAsInt());
         }
     }
 
