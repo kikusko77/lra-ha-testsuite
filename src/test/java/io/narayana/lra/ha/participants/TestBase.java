@@ -258,12 +258,10 @@ public abstract class TestBase implements ParticipantEndpoints {
     }
 
     protected void waitForAllCoordinators(long atMostSeconds) {
-        for (URI base : coordinatorUris) {
-            Awaitility.await("waiting for coordinator " + base + " to be ready")
-                    .atMost(atMostSeconds, TimeUnit.SECONDS)
-                    .pollInterval(Duration.ofSeconds(2))
-                    .until(() -> isCoordinatorReachable(base));
-        }
+        coordinatorUris.parallelStream().forEach(base -> Awaitility.await("waiting for coordinator " + base + " to be ready")
+                .atMost(atMostSeconds, TimeUnit.SECONDS)
+                .pollInterval(Duration.ofSeconds(2))
+                .until(() -> isCoordinatorReachable(base)));
     }
 
     protected static void waitFor(String description, long timeoutMs, BooleanSupplier condition) {
