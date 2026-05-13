@@ -108,11 +108,6 @@ class StatusIT extends TestBase {
         log.infof("compensateCalls=%s intermediateStatusCalls=%s", compensateCalls, statusCalls);
 
         assertEquals(1, compensateCalls, "@Compensate must be called exactly once");
-        // TODO (coordinator): after @Status returns Compensating (HEURISTIC_HAZARD), the RecoveringLRA
-        // calls phase2Commit which Arjuna treats as H_HAZARD (2PC done) and deactivates the action,
-        // removing it from the object store. The next recovery scan can't find the LRA, so only 1
-        // post-async @Status poll is made. Fix: re-persist LRA state to the object store after a
-        // heuristic outcome in RecoveringLRA.tryReplayPhase2() so the scanner retries it.
         assertTrue(statusCalls >= 1,
                 "Coordinator must poll @Status at least once after async 202; got " + statusCalls);
     }
@@ -142,8 +137,6 @@ class StatusIT extends TestBase {
         log.infof("completeCalls=%s intermediateStatusCalls=%s", completeCalls, statusCalls);
 
         assertEquals(1, completeCalls, "@Complete must be called exactly once");
-        // TODO (coordinator): same retry gap as the compensate variant — see comment in
-        // testAsyncCompensate_intermediateCompensatingState_lraResolves for details.
         assertTrue(statusCalls >= 1,
                 "Coordinator must poll @Status at least once after async 202; got " + statusCalls);
     }
