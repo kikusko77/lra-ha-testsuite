@@ -132,17 +132,10 @@ class LeaveIT extends TestBase {
     void testLeave_coordinatorCrashBeforeSave_cancelDoesNotCallCompensate() {
         log.info("LeaveIT: testLeave_coordinatorCrashBeforeSave_cancelDoesNotCallCompensate");
         URI lra = prepareLeaveLra("leave-itself-crash-before-save-cancel");
-        String compensatorLink = buildCompensatorLink(
-                participantUri(COMPENSATE), participantUri(COMPLETE));
 
         enableFailurePoint(nextRoutedCoordinator(), FailurePoint.LEAVE_BEFORE_SAVE.name());
 
-        try {
-            lraClient.leaveLRA(lra, compensatorLink);
-        } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.infof("leaveLRA returned %s after retry exhaustion",
-                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
-        }
+        triggerLeaveViaRetry(lra);
 
         ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
 
@@ -161,17 +154,10 @@ class LeaveIT extends TestBase {
     void testLeave_coordinatorCrashAfterSave_cancelDoesNotCallCompensate() {
         log.info("LeaveIT: testLeave_coordinatorCrashAfterSave_cancelDoesNotCallCompensate");
         URI lra = prepareLeaveLra("leave-itself-crash-after-save-cancel");
-        String compensatorLink = buildCompensatorLink(
-                participantUri(COMPENSATE), participantUri(COMPLETE));
 
         enableFailurePoint(nextRoutedCoordinator(), FailurePoint.LEAVE_AFTER_SAVE.name());
 
-        try {
-            lraClient.leaveLRA(lra, compensatorLink);
-        } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.infof("leaveLRA returned %s after retry exhaustion",
-                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
-        }
+        triggerLeaveViaRetry(lra);
 
         ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
 
@@ -190,17 +176,10 @@ class LeaveIT extends TestBase {
     void testLeave_coordinatorCrashBeforeSave_closeDoesNotCallComplete() {
         log.info("LeaveIT: testLeave_coordinatorCrashBeforeSave_closeDoesNotCallComplete");
         URI lra = prepareLeaveLra("leave-itself-crash-before-save-close");
-        String compensatorLink = buildCompensatorLink(
-                participantUri(COMPENSATE), participantUri(COMPLETE));
 
         enableFailurePoint(nextRoutedCoordinator(), FailurePoint.LEAVE_BEFORE_SAVE.name());
 
-        try {
-            lraClient.leaveLRA(lra, compensatorLink);
-        } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.infof("leaveLRA returned %s after retry exhaustion",
-                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
-        }
+        triggerLeaveViaRetry(lra);
 
         ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
 
@@ -219,17 +198,10 @@ class LeaveIT extends TestBase {
     void testLeave_coordinatorCrashAfterSave_closeDoesNotCallComplete() {
         log.info("LeaveIT: testLeave_coordinatorCrashAfterSave_closeDoesNotCallComplete");
         URI lra = prepareLeaveLra("leave-itself-crash-after-save-close");
-        String compensatorLink = buildCompensatorLink(
-                participantUri(COMPENSATE), participantUri(COMPLETE));
 
         enableFailurePoint(nextRoutedCoordinator(), FailurePoint.LEAVE_AFTER_SAVE.name());
 
-        try {
-            lraClient.leaveLRA(lra, compensatorLink);
-        } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.infof("leaveLRA returned %s after retry exhaustion",
-                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
-        }
+        triggerLeaveViaRetry(lra);
 
         ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
 
@@ -246,6 +218,17 @@ class LeaveIT extends TestBase {
 
     private URI prepareLeaveLra(String scenario) {
         return prepareLra(participantClientId(scenario), COMPENSATE, COMPLETE);
+    }
+
+    private void triggerLeaveViaRetry(URI lra) {
+        String compensatorLink = buildCompensatorLink(
+                participantUri(COMPENSATE), participantUri(COMPLETE));
+        try {
+            lraClient.leaveLRA(lra, compensatorLink);
+        } catch (jakarta.ws.rs.WebApplicationException e) {
+            log.infof("leaveLRA returned %s after retry exhaustion",
+                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
+        }
     }
 
     /**
