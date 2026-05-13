@@ -1,5 +1,6 @@
 package io.narayana.lra.ha.participants;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -45,12 +46,17 @@ class NestedStartLraIT extends TestBase {
         assertNotEquals(parent, nested,
                 "Nested LRA must be distinct from its parent");
 
-        List<String> uids = uniqueUids(getAllActiveIdsAcrossCoordinators());
-        log.infof("Cluster-wide unique active uids after nested-start with crash: %s", uids);
-        assertTrue(uids.contains(LRAConstants.getLRAUid(parent)),
-                "Parent LRA uid must be active after crash recovery, uids=" + uids);
-        assertTrue(uids.contains(LRAConstants.getLRAUid(nested)),
-                "Nested LRA uid must be active exactly once after crash, uids=" + uids);
+        List<String> uids = getAllActiveIdsAcrossCoordinators().stream()
+                .map(s -> LRAConstants.getLRAUid(URI.create(s)))
+                .collect(Collectors.toList());
+        log.infof("Cluster-wide raw active uids after nested-start with crash: %s", uids);
+
+        String parentUid = LRAConstants.getLRAUid(parent);
+        String nestedUid = LRAConstants.getLRAUid(nested);
+        assertEquals(1, uids.stream().filter(parentUid::equals).count(),
+                "Parent LRA uid must be active exactly once after crash recovery, uids=" + uids);
+        assertEquals(1, uids.stream().filter(nestedUid::equals).count(),
+                "Nested LRA uid must be active exactly once after crash recovery, uids=" + uids);
     }
 
     @Test
