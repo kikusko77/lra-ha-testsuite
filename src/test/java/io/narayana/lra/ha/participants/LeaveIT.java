@@ -93,10 +93,8 @@ class LeaveIT extends TestBase {
 
         try {
             lraClient.cancelLRA(lra);
-        } catch (jakarta.ws.rs.NotFoundException e) {
-            log.info("cancelLRA returned 404, treating as already processed");
         } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.infof("cancelLRA returned %s — coordinator crashed as expected",
+            log.infof("cancelLRA returned %s after failover, treating as already processed",
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
@@ -118,10 +116,8 @@ class LeaveIT extends TestBase {
 
         try {
             lraClient.closeLRA(lra);
-        } catch (jakarta.ws.rs.NotFoundException e) {
-            log.info("closeLRA returned 404, treating as already processed");
         } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.infof("closeLRA returned %s — coordinator crashed as expected",
+            log.infof("closeLRA returned %s after failover, treating as already processed",
                     e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
         }
 
@@ -152,7 +148,6 @@ class LeaveIT extends TestBase {
 
         try {
             lraClient.cancelLRA(lra);
-        } catch (jakarta.ws.rs.NotFoundException ignored) {
         } catch (jakarta.ws.rs.WebApplicationException ignored) {
         }
 
@@ -182,7 +177,6 @@ class LeaveIT extends TestBase {
 
         try {
             lraClient.cancelLRA(lra);
-        } catch (jakarta.ws.rs.NotFoundException ignored) {
         } catch (jakarta.ws.rs.WebApplicationException ignored) {
         }
 
@@ -212,7 +206,6 @@ class LeaveIT extends TestBase {
 
         try {
             lraClient.closeLRA(lra);
-        } catch (jakarta.ws.rs.NotFoundException ignored) {
         } catch (jakarta.ws.rs.WebApplicationException ignored) {
         }
 
@@ -242,7 +235,6 @@ class LeaveIT extends TestBase {
 
         try {
             lraClient.closeLRA(lra);
-        } catch (jakarta.ws.rs.NotFoundException ignored) {
         } catch (jakarta.ws.rs.WebApplicationException ignored) {
         }
 
