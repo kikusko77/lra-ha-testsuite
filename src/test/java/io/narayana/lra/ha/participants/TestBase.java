@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.narayana.lra.LRAConstants;
 import io.narayana.lra.client.NarayanaLRAClient;
 import io.narayana.lra.ha.proxy.CoordinatorProxyResource;
+import io.naryana.lra.ha.Participant;
 import io.quarkus.narayana.lra.runtime.LRAConfiguration;
 import io.quarkus.test.common.QuarkusTestResource;
 import jakarta.enterprise.context.control.ActivateRequestContext;
@@ -23,6 +24,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BooleanSupplier;
 import java.util.function.IntSupplier;
+import java.util.stream.Collectors;
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionTimeoutException;
 import org.jboss.logging.Logger;
@@ -439,6 +441,17 @@ public abstract class TestBase implements ParticipantEndpoints {
 
     protected String participantClientId(String scenario) {
         return getClass().getSimpleName() + "#" + scenario;
+    }
+
+    protected String uniqueClientId(String action) {
+        return Participant.class.getName() + "#" + action + "-" + System.nanoTime();
+    }
+
+    protected List<String> uniqueUids(List<String> uris) {
+        return uris.stream()
+                .map(s -> LRAConstants.getLRAUid(URI.create(s)))
+                .distinct()
+                .collect(Collectors.toList());
     }
 
     protected String buildCompensatorLink(URI compensate, URI complete) {

@@ -107,24 +107,6 @@ class NestedForgetIT extends TestBase {
         assertForgetCalledAtLeastOnce(nested);
     }
 
-    private void cancel(URI lra) {
-        try {
-            lraClient.cancelLRA(lra);
-        } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.infof("cancelLRA returned %s for %s",
-                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown", lra);
-        }
-    }
-
-    private void close(URI lra) {
-        try {
-            lraClient.closeLRA(lra);
-        } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.infof("closeLRA returned %s for %s",
-                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown", lra);
-        }
-    }
-
     private void waitForFailedAsyncForget(URI lra, long forgetTimeoutMs) {
         waitForForgetCallCount(lra, 1, forgetTimeoutMs);
         waitForNoActiveLra(lra, LRA_GONE_HAPPY_PATH_MS);

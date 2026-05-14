@@ -74,11 +74,4 @@ class NestedStartLraIT extends TestBase {
         assertTrue(uids.contains(LRAConstants.getLRAUid(nested)),
                 "Nested LRA must be active across the cluster, uids=" + uids);
     }
-
-    private static List<String> uniqueUids(List<String> uris) {
-        return uris.stream()
-                .map(s -> LRAConstants.getLRAUid(URI.create(s)))
-                .distinct()
-                .collect(Collectors.toList());
-    }
 }

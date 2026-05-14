@@ -7,7 +7,6 @@ import io.narayana.lra.LRAConstants;
 import io.quarkus.test.junit.QuarkusTest;
 import java.net.URI;
 import java.util.List;
-import java.util.stream.Collectors;
 import org.jboss.logging.Logger;
 import org.junit.jupiter.api.Test;
 
@@ -78,12 +77,5 @@ class NestedJoinLraIT extends TestBase {
                 "Parent LRA must remain active after JOIN_BEFORE_SAVE crash, uids=" + uids);
         assertTrue(uids.contains(LRAConstants.getLRAUid(nested)),
                 "Nested LRA must remain active exactly once after JOIN_BEFORE_SAVE crash, uids=" + uids);
-    }
-
-    private static List<String> uniqueUids(List<String> uris) {
-        return uris.stream()
-                .map(s -> LRAConstants.getLRAUid(URI.create(s)))
-                .distinct()
-                .collect(Collectors.toList());
     }
 }

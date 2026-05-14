@@ -3,7 +3,6 @@ package io.narayana.lra.ha.participants;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
-import io.naryana.lra.ha.Participant;
 import io.quarkus.test.common.http.TestHTTPResource;
 import io.quarkus.test.junit.QuarkusTest;
 import java.net.URI;
@@ -94,9 +93,5 @@ class JoinLraIT extends TestBase {
                 unique,
                 "Expected exactly one unique active LRA across cluster but got ids=" + all);
         lrasToAfterFinish.add(lra);
-    }
-
-    private String uniqueClientId(String action) {
-        return Participant.class.getName() + "#" + action + "-" + System.nanoTime();
     }
 }
