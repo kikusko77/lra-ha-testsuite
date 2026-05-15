@@ -54,7 +54,7 @@ class NestedAfterLraIT extends TestBase {
         cancel(parent);
         waitForAfterCallCount(nested, 1, LRA_GONE_AFTER_RECOVERY_MS);
 
-        assertAfterLraOutcomeOrHaGap(nested, LRAStatus.Cancelled);
+        assertAfterLraOutcome(nested, LRAStatus.Cancelled, 1);
     }
 
     @Test
@@ -70,7 +70,7 @@ class NestedAfterLraIT extends TestBase {
         close(parent);
         waitForAfterCallCount(nested, 1, LRA_GONE_AFTER_RECOVERY_MS);
 
-        assertAfterLraOutcomeOrHaGap(nested, LRAStatus.FailedToClose);
+        assertAfterLraOutcome(nested, LRAStatus.FailedToClose, 1);
     }
 
     @Test
@@ -124,7 +124,7 @@ class NestedAfterLraIT extends TestBase {
         ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
         waitForAfterCallCount(nested, 1, LRA_GONE_AFTER_RECOVERY_MS);
 
-        assertAfterLraOutcomeOrHaGap(nested, LRAStatus.Closed);
+        assertAfterLraOutcome(nested, LRAStatus.Closed, 1);
     }
 
     private void assertAfterLraOutcome(URI nested, LRAStatus expectedStatus, int expectedCallCount) {
@@ -134,15 +134,4 @@ class NestedAfterLraIT extends TestBase {
                 "@AfterLRA must receive " + expectedStatus + ", got " + getAfterLraStatus(nested));
     }
 
-    private void assertAfterLraOutcomeOrHaGap(URI nested, LRAStatus expected) {
-        int callCount = getAfterCallCount(nested);
-        if (callCount > 0) {
-            assertEquals(expected.name(), getAfterLraStatus(nested),
-                    "@AfterLRA delivered with wrong status (expected " + expected + ")");
-        } else {
-            log.warnf("HA cache-staleness gap: @AfterLRA did not fire on the parent-end cascade "
-                    + "for nested %s — single-coord AfterLraIT covers the strong case "
-                    + "(expected status would have been %s)", nested, expected);
-        }
-    }
 }
