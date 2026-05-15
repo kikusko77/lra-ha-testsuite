@@ -109,7 +109,13 @@ The available `*IT` classes live under
 - `CoordinatorProxyResource` starts a Vert.x proxy on `localhost:8080`
   that round-robins each HTTP call to the next healthy backend. Tests
   point `quarkus.lra.coordinator-url` at this proxy, so consecutive LRA
-  operations land on different coordinators.
+  operations land on different coordinators. The four backend URLs
+  (`http://127.0.0.1:8081-8084/lra-coordinator`) are hard-coded in the
+  `BACKENDS` list at the top of
+  `src/test/java/io/narayana/lra/ha/proxy/CoordinatorProxyResource.java` —
+  there is no configuration property for them. Edit that list if you
+  change the ports in `docker-compose.yml` or want to point at a
+  different number of coordinators.
 - `Participant`, `NestedParticipant`, `AfterLraParticipant`, etc. (in
   `src/main/java/io/narayana/lra/ha/`) are the participants under test;
   they record call counts so the tests can assert what was invoked.
