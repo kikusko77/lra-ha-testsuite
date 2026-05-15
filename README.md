@@ -1,240 +1,123 @@
 # lra-ha-testsuite
 
-This project runs a **Quarkus LRA participant** + **Narayana LRA coordinator** locally using **Docker Desktop Kubernetes**, and executes integration tests against them via **port-forwarding**.
+Integration tests that exercise the Narayana LRA coordinator running as a
+**4-node high-availability cluster** backed by a shared PostgreSQL object
+store. The tests drive the cluster through an in-process Vert.x proxy on
+`localhost:8080` so each LRA call lands on a different coordinator in
+round-robin order, surfacing cross-coordinator coordination bugs.
 
----
+The suite depends on two sibling projects living next to it on disk:
 
-## Prerequisites (one-time)
-
-- Docker Desktop (Kubernetes enabled)
-- `kubectl`
-- Java + Maven
-- Local Docker registry running at `localhost:5001`
-
-If you don’t have the registry yet:
-
-```bash
-docker run -d --restart=always -p 5001:5000 --name registry registry:2
+```
+├── lra/                      # Narayana LRA fork (coordinator library)
+├── lra-coordinator-quarkus/  # Quarkus wrapper, produces the native binary
+└── lra-ha-testsuite/         # this project — tests + docker-compose stack
 ```
 
 ---
 
-## 0) Verify Kubernetes is reachable (one-time)
+## Prerequisites
 
-```bash
-kubectl get nodes
-```
-
-You should see all nodes in **Ready** state.
-
----
-
-## 1) Deploy coordinator + participant
-
-From the repository root:
-
-```bash
-kubectl apply -f k8s-coordinator.yaml
-kubectl apply -f k8s.yaml
-```
-
-Wait until both pods are running:
-
-```bash
-kubectl get pods -w
-```
-
-Expected:
-
-- `lra-coordinator-...  1/1 Running`
-- `lra-participant-...  1/1 Running`
+- Docker Desktop (or any Docker engine with `docker compose`)
+- JDK 21
+- Maven 3.9+
+- ~6 GB free RAM for the native-image build container
 
 ---
 
-## 2) Ensure participant knows where the coordinator is
+## Step 1. Build the LRA coordinator library
 
-The participant must have this environment variable:
-
-```
-QUARKUS_LRA_COORDINATOR_URL=http://lra-coordinator:8090/lra-coordinator
-```
-
-Check:
+The fork in `/lra` is the source of truth for the coordinator code.
+Install it into your local Maven repo so the Quarkus wrapper can pick it up:
 
 ```bash
-kubectl get deploy lra-participant -o=jsonpath='{.spec.template.spec.containers[0].env}{"\n"}'
-```
-
-If missing, set it once:
-
-```bash
-kubectl set env deploy/lra-participant \
-  QUARKUS_LRA_COORDINATOR_URL=http://lra-coordinator:8090/lra-coordinator
-
-kubectl rollout restart deploy/lra-participant
-kubectl rollout status deploy/lra-participant
+./mvnw clean install
 ```
 
 ---
 
-## 3) Port-forward the coordinator (Terminal 1)
+## Step 2. Build the native coordinator binary
 
 ```bash
-kubectl port-forward svc/lra-coordinator 8090:8090
+cd ../lra-coordinator-quarkus
+./mvnw package -Dnative -Dquarkus.native.container-build=true \
+  -Dquarkus.container-image.build=false -DskipTests
 ```
 
-Leave this terminal running.
+This runs the GraalVM native-image build inside a Mandrel container and
+drops the executable at `target/lra-coordinator-quarkus-1.0.0-SNAPSHOT-runner`.
+The build takes 1–2 minutes.
 
-Quick check (in another terminal):
+---
+
+## Step 3. Package the binary into a Docker image
 
 ```bash
-curl -i http://localhost:8090/lra-coordinator
+docker build -f src/main/docker/Dockerfile.native -t local-coordinator:latest .
+```
+
+The `local-coordinator:latest` tag is what `docker-compose.yml` looks for.
+
+---
+
+## Step 4. Start the HA stack
+
+```bash
+cd ../lra-ha-testsuite
+docker compose up -d
+```
+
+This brings up:
+
+- `postgres`  — shared object store on port 5432
+- `coordinator-1` … `coordinator-4` — four coordinator instances on host
+  ports 8081–8084. They all talk to the same Postgres database, so any
+  coordinator can recover any LRA.
+
+Wait for all four to be healthy before running the tests:
+
+```bash
+for p in 8081 8082 8083 8084; do
+  until curl -s -f -o /dev/null http://localhost:$p/q/health/ready; do sleep 1; done
+  echo "$p UP"
+done
 ```
 
 ---
 
-## 4) Port-forward the participant (Terminal 2)
+## Step 5. Run the tests
+
+Full suite (≈30–50 min):
 
 ```bash
-kubectl port-forward svc/lra-participant 8081:8081
+mvn verify
 ```
 
-Leave this terminal running.
-
-Quick check:
+Single test class (fast feedback while iterating):
 
 ```bash
-curl -i http://localhost:8081/participant2/start-lra
+mvn verify -Dit.test=NestedAfterLraIT -DfailIfNoTests=false
 ```
 
-Expected: `200 OK` + LRA id in response body.
+The available `*IT` classes live under
+`src/test/java/io/narayana/lra/ha/participants/`.
 
 ---
 
-## 5) Run the integration test (Terminal 3)
+## How the test harness wires things up
 
-```bash
-COORDINATOR_BASE_URL=http://localhost:8090/lra-coordinator \
-PARTICIPANT_BASE_URL=http://localhost:8081 \
-./mvnw -Dtest=LraIT test
-```
+- `CoordinatorProxyResource` starts a Vert.x proxy on `localhost:8080`
+  that round-robins each HTTP call to the next healthy backend. Tests
+  point `quarkus.lra.coordinator-url` at this proxy, so consecutive LRA
+  operations land on different coordinators.
+- `Participant`, `NestedParticipant`, `AfterLraParticipant`, etc. (in
+  `src/main/java/io/narayana/lra/ha/`) are the participants under test;
+  they record call counts so the tests can assert what was invoked.
+- `TestBase` resets per-coordinator fault-injection state and proxy
+  routing before each test.
 
-That’s it.
-
----
-
-# What to do when things change
-
-## 🔁 When you change Kubernetes YAML only
-
-Examples:
-
-- env vars
-- probes
-- ports
-- resource limits
-
-Steps:
-
-```bash
-kubectl apply -f k8s.yaml
-kubectl apply -f k8s-coordinator.yaml
-```
-
-If needed, force restart:
-
-```bash
-kubectl rollout restart deploy/lra-participant
-kubectl rollout restart deploy/lra-coordinator
-```
-
-No Docker rebuild needed.
-
----
-
-## 🧱 When you change participant Java code
-
-Examples:
-
-- REST endpoints
-- LRA annotations
-- logic in `LRAParticipant`
-
-Steps (important):
-
-1) Build the JAR
-
-```bash
-./mvnw clean package -DskipTests
-```
-
-2) Build the Docker image
-
-```bash
-docker build -t lra-participant:1.0.3.Final-SNAPSHOT .
-```
-
-3) Push to local registry
-
-```bash
-docker tag lra-participant:1.0.3.Final-SNAPSHOT \
-  localhost:5001/lra-participant:1.0.3.Final-SNAPSHOT
-
-docker push localhost:5001/lra-participant:1.0.3.Final-SNAPSHOT
-```
-
-4) Restart the deployment
-
-```bash
-kubectl rollout restart deploy/lra-participant
-kubectl rollout status deploy/lra-participant
-```
-
-💡 You do not need to re-apply YAML unless the YAML changed.
-
----
-
-## 🧱 When you change coordinator code or image
-
-Same pattern as participant, just different image name:
-
-```bash
-docker build -t local-coordinator:latest .
-docker tag local-coordinator:latest localhost:5001/local-coordinator:latest
-docker push localhost:5001/local-coordinator:latest
-
-kubectl rollout restart deploy/lra-coordinator
-kubectl rollout status deploy/lra-coordinator
-```
-
----
-
-## 🔄 When port-forward breaks
-
-This happens after rollouts.
-
-Fix:
-
-- Stop port-forward (`Ctrl+C`)
-- Start it again (steps 3 and 4)
-
----
-
-## 🧹 Cleanup (optional)
-
-Remove everything from the cluster:
-
-```bash
-kubectl delete -f k8s.yaml
-kubectl delete -f k8s-coordinator.yaml
-```
-
----
-
-## Mental model
-
-- Docker → builds images
-- Kubernetes Deployment → runs containers
-- Service → stable networking
-- port-forward → temporary bridge to your laptop
-- JUnit test → external client calling real services
+The 20 s recovery period and 10 s backoff in `docker-compose.yml`
+(`-DRecoveryEnvironmentBean.periodicRecoveryPeriod=20`,
+`-DRecoveryEnvironmentBean.recoveryBackoffPeriod=10`) are what the
+recovery-driven tests rely on; do not lower them without adjusting the
+test timeouts.
