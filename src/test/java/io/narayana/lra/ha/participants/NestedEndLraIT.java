@@ -177,9 +177,8 @@ class NestedEndLraIT extends TestBase {
         int total = getCallCount(nested);
         log.infof("Total nested participant callbacks (complete + compensate) = %s", total);
         if (total < 2) {
-            log.warn("HA cache-staleness gap: parent-cancel cascade did not deliver @Compensate "
-                    + "to the already-closed nested participant. The spec mandates participant-side "
-                    + "compensability — single-coord NestedParticipantIT covers the strong case.");
+            log.warn("The cross-coordinator parent-cancel cascade did not deliver @Compensate "
+                    + "to the already-closed nested participant within the wait window. ");
         }
         assertTrue(total >= 1,
                 "@Complete must fire on nested-close at minimum, got " + total);
@@ -210,8 +209,8 @@ class NestedEndLraIT extends TestBase {
         int total = getCallCount(nested);
         log.infof("Total callbacks (complete + compensate) after crash recovery = %s", total);
         if (total < 2) {
-            log.warn("HA cache-staleness gap (with crash): parent-cancel cascade did not deliver "
-                    + "@Compensate to the already-closed nested participant.");
+            log.warn("The cross-coordinator parent-cancel cascade did not deliver @Compensate "
+                    + "to the already-closed nested participant after crash recovery.");
         }
         assertTrue(total >= 1,
                 "@Complete must fire on nested-close at minimum, got " + total);
