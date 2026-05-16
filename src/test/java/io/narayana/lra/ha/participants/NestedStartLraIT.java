@@ -46,7 +46,7 @@ class NestedStartLraIT extends TestBase {
         assertNotEquals(parent, nested,
                 "Nested LRA must be distinct from its parent");
 
-        List<String> uids = getAllActiveIdsAcrossCoordinators().stream()
+        List<String> uids = getActiveLras().stream()
                 .map(s -> LRAConstants.getLRAUid(URI.create(s)))
                 .collect(Collectors.toList());
         log.infof("Cluster-wide raw active uids after nested-start with crash: %s", uids);
@@ -68,7 +68,7 @@ class NestedStartLraIT extends TestBase {
         URI nested = startNestedLra(parent, "start-nested-happy");
 
         assertNotEquals(parent, nested);
-        List<String> uids = uniqueUids(getAllActiveIdsAcrossCoordinators());
+        List<String> uids = uniqueUids(getActiveLras());
         assertTrue(uids.contains(LRAConstants.getLRAUid(parent)),
                 "Parent LRA must be active across the cluster, uids=" + uids);
         assertTrue(uids.contains(LRAConstants.getLRAUid(nested)),

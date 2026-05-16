@@ -116,7 +116,7 @@ class NestedForgetIT extends TestBase {
                 "@Forget must fire for nested " + lra + " within " + forgetTimeoutMs
                         + " ms, got " + forgetCount + " calls");
         String lraUid = LRAConstants.getLRAUid(lra);
-        boolean stillActive = getAllActiveIdsAcrossCoordinators().stream()
+        boolean stillActive = getActiveLras().stream()
                 .map(LRAConstants::getLRAUid)
                 .anyMatch(lraUid::equals);
         assertTrue(!stillActive,

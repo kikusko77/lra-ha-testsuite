@@ -28,7 +28,7 @@ class EndLraIT extends TestBase {
 
         waitForNoActiveLra(lra, LRA_GONE_FAST_MS);
 
-        List<String> activeIds = getActiveIds();
+        List<String> activeIds = getActiveLras();
         long unique = activeIds.size();
 
         assertEquals(0, unique, "Expected no active LRAs after cancel but got ids=" + activeIds);
@@ -52,7 +52,7 @@ class EndLraIT extends TestBase {
 
         waitForNoActiveLra(lra, LRA_GONE_FAST_MS);
 
-        List<String> activeIds = getActiveIds();
+        List<String> activeIds = getActiveLras();
         long unique = activeIds.size();
 
         assertEquals(0, unique, "Expected no active LRAs after cancel but got ids=" + activeIds);
@@ -69,7 +69,7 @@ class EndLraIT extends TestBase {
 
         waitForNoActiveLra(lra, LRA_GONE_FAST_MS);
 
-        List<String> activeIds = getActiveIds();
+        List<String> activeIds = getActiveLras();
         long unique = activeIds.size();
 
         assertEquals(0, unique, "Expected no active LRAs after close but got ids=" + activeIds);
@@ -93,7 +93,7 @@ class EndLraIT extends TestBase {
 
         waitForNoActiveLra(lra, LRA_GONE_FAST_MS);
 
-        List<String> activeIds = getActiveIds();
+        List<String> activeIds = getActiveLras();
         long unique = activeIds.size();
 
         assertEquals(0, unique, "Expected no active LRAs after close but got ids=" + activeIds);
@@ -118,7 +118,7 @@ class EndLraIT extends TestBase {
 
         waitForNoActiveLra(lra, LRA_GONE_FAST_MS);
 
-        List<String> activeIds = getActiveIds();
+        List<String> activeIds = getActiveLras();
         long unique = activeIds.size();
 
         assertEquals(0, unique, "Expected no active LRAs after cancel but got ids=" + activeIds);
@@ -139,7 +139,7 @@ class EndLraIT extends TestBase {
 
         waitForNoActiveLra(lra, LRA_GONE_FAST_MS);
 
-        List<String> activeIds = getActiveIds();
+        List<String> activeIds = getActiveLras();
         long unique = activeIds.size();
 
         assertEquals(0, unique, "Expected no active LRAs after cancel but got ids=" + activeIds);
@@ -164,7 +164,7 @@ class EndLraIT extends TestBase {
 
         waitForNoActiveLra(lra, LRA_GONE_FAST_MS);
 
-        List<String> activeIds = getActiveIds();
+        List<String> activeIds = getActiveLras();
         long unique = activeIds.size();
 
         assertEquals(0, unique, "Expected no active LRAs after close but got ids=" + activeIds);
@@ -188,7 +188,7 @@ class EndLraIT extends TestBase {
 
         waitForNoActiveLra(lra, LRA_GONE_FAST_MS);
 
-        List<String> activeIds = getActiveIds();
+        List<String> activeIds = getActiveLras();
         long unique = activeIds.size();
 
         assertEquals(0, unique, "Expected no active LRAs after close but got ids=" + activeIds);

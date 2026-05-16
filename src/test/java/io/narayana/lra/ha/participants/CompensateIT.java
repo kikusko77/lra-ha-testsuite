@@ -261,7 +261,7 @@ class CompensateIT extends TestBase {
 
         waitForNoActiveLra(lra, LRA_GONE_HAPPY_PATH_MS);
 
-        List<String> activeIds = getActiveIds();
+        List<String> activeIds = getActiveLras();
         String targetUid = LRAConstants.getLRAUid(lra);
         boolean stillActive = activeIds.stream()
                 .map(LRAConstants::getLRAUid)

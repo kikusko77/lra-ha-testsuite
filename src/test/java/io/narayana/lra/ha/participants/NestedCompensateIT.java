@@ -245,7 +245,7 @@ class NestedCompensateIT extends TestBase {
 
         waitForNoActiveLra(nested, LRA_GONE_HAPPY_PATH_MS);
 
-        List<String> activeIds = getActiveIds();
+        List<String> activeIds = getActiveLras();
         String nestedUid = LRAConstants.getLRAUid(nested);
         boolean stillActive = activeIds.stream()
                 .map(LRAConstants::getLRAUid)

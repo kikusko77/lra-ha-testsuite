@@ -218,7 +218,7 @@ class NestedEndLraIT extends TestBase {
 
     private void assertActiveContainsOnlyParent(URI parent) {
         String parentUid = LRAConstants.getLRAUid(parent);
-        List<String> activeUids = getAllActiveIdsAcrossCoordinators().stream()
+        List<String> activeUids = getActiveLras().stream()
                 .map(LRAConstants::getLRAUid)
                 .toList();
 

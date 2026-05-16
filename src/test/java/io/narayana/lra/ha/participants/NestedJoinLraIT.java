@@ -44,7 +44,7 @@ class NestedJoinLraIT extends TestBase {
         log.infof("nested joinLRA recoveryUrl: %s", recoveryUrl);
         assertNotNull(recoveryUrl);
 
-        List<String> uids = uniqueUids(getAllActiveIdsAcrossCoordinators());
+        List<String> uids = uniqueUids(getActiveLras());
         log.infof("Cluster-wide unique active uids after JOIN_AFTER_SAVE crash: %s", uids);
         assertTrue(uids.contains(LRAConstants.getLRAUid(parent)),
                 "Parent LRA must remain active after JOIN_AFTER_SAVE crash, uids=" + uids);
@@ -71,7 +71,7 @@ class NestedJoinLraIT extends TestBase {
                 null, null, null, null, new StringBuilder());
         assertNotNull(recoveryUrl);
 
-        List<String> uids = uniqueUids(getAllActiveIdsAcrossCoordinators());
+        List<String> uids = uniqueUids(getActiveLras());
         log.infof("Cluster-wide unique active uids after JOIN_BEFORE_SAVE crash: %s", uids);
         assertTrue(uids.contains(LRAConstants.getLRAUid(parent)),
                 "Parent LRA must remain active after JOIN_BEFORE_SAVE crash, uids=" + uids);

@@ -37,7 +37,9 @@ public class CoordinatorProxyResource implements QuarkusTestResourceLifecycleMan
     private static final Duration BACKEND_BOOT_TIMEOUT = Duration.ofMinutes(2);
     private static final String COORDINATOR_URL_KEY = "quarkus.lra.coordinator-url";
     private static final int PROXY_PORT = 8080;
-    private static final String PROXY_COORDINATOR_URL = "http://localhost:8080/lra-coordinator";
+    private static final String PROXY_BASE_URL = "http://localhost:8080";
+    private static final String PROXY_COORDINATOR_URL = PROXY_BASE_URL + "/lra-coordinator";
+    private static final URI PROXY_ADMIN_ACTIVE_LRAS = URI.create(PROXY_BASE_URL + "/admin/active-lras");
     private static final HttpClient HTTP = HttpClient.newBuilder()
             .connectTimeout(BACKEND_CHECK_TIMEOUT)
             .build();
@@ -96,6 +98,10 @@ public class CoordinatorProxyResource implements QuarkusTestResourceLifecycleMan
 
     public static List<URI> getBackends() {
         return BACKENDS;
+    }
+
+    public static URI adminActiveLrasUri() {
+        return PROXY_ADMIN_ACTIVE_LRAS;
     }
 
     public static void resetProxyRouting() {

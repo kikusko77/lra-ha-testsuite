@@ -104,54 +104,26 @@ public abstract class TestBase implements ParticipantEndpoints {
                 .build();
     }
 
-    protected List<String> getActiveIds() {
-        for (URI base : coordinatorUris) {
-            Response response = null;
-            try {
-                response = client.target(base)
-                        .path("active/ids")
-                        .request(MediaType.APPLICATION_JSON)
-                        .get();
-                if (response.getStatus() == 200) {
-                    String json = response.readEntity(String.class);
-                    return JSON.readValue(json, new TypeReference<List<String>>() {
-                    });
-                }
-            } catch (Exception e) {
-                LOG.infof("Coordinator %s unreachable (possibly crashed)", base);
-            } finally {
-                if (response != null)
-                    response.close();
+    protected List<String> getActiveLras() {
+        Response response = null;
+        try {
+            response = client.target(CoordinatorProxyResource.adminActiveLrasUri())
+                    .request(MediaType.APPLICATION_JSON)
+                    .get();
+            if (response.getStatus() == 200) {
+                String json = response.readEntity(String.class);
+                return JSON.readValue(json, new TypeReference<List<String>>() {
+                });
             }
+            LOG.infof("Proxy /admin/active-lras returned status %s", response.getStatus());
+            return new ArrayList<>();
+        } catch (Exception e) {
+            LOG.infof("Proxy /admin/active-lras unreachable: %s", e.getMessage());
+            return new ArrayList<>();
+        } finally {
+            if (response != null)
+                response.close();
         }
-        return new ArrayList<>();
-    }
-
-    /**
-     * Each transaction lives in a single backend's local object store, so a single-backend
-     * read misses transactions created elsewhere; this union is needed for the nested cases.
-     */
-    protected List<String> getAllActiveIdsAcrossCoordinators() {
-        java.util.LinkedHashSet<String> all = new java.util.LinkedHashSet<>();
-        for (URI base : coordinatorUris) {
-            Response response = null;
-            try {
-                response = client.target(base)
-                        .path("active/ids")
-                        .request(MediaType.APPLICATION_JSON)
-                        .get();
-                if (response.getStatus() == 200) {
-                    String json = response.readEntity(String.class);
-                    all.addAll(JSON.readValue(json, new TypeReference<List<String>>() {
-                    }));
-                }
-            } catch (Exception ignored) {
-            } finally {
-                if (response != null)
-                    response.close();
-            }
-        }
-        return new ArrayList<>(all);
     }
 
     protected void enableFailurePoint(URI coordinatorBase, FailurePoint point) {
@@ -318,7 +290,7 @@ public abstract class TestBase implements ParticipantEndpoints {
     protected void waitForNoActiveLra(URI lraId, long timeoutMs) {
         String targetLraUid = LRAConstants.getLRAUid(lraId);
         waitFor("LRA " + targetLraUid + " to leave the cluster active list", timeoutMs,
-                () -> getAllActiveIdsAcrossCoordinators().stream()
+                () -> getActiveLras().stream()
                         .map(LRAConstants::getLRAUid)
                         .noneMatch(targetLraUid::equals));
     }
@@ -338,7 +310,7 @@ public abstract class TestBase implements ParticipantEndpoints {
     }
 
     protected void assertNoActiveLras() {
-        List<String> activeIds = getActiveIds();
+        List<String> activeIds = getActiveLras();
         Assertions.assertEquals(0, activeIds.size(), "Expected no active LRAs but got: " + activeIds);
     }
 

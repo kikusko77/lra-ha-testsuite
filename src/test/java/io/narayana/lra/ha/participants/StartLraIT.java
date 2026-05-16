@@ -28,7 +28,7 @@ class StartLraIT extends TestBase {
                 true);
 
         lrasToAfterFinish.add(lra);
-        List<String> activeIds = getActiveIds();
+        List<String> activeIds = getActiveLras();
         long unique = activeIds.size();
 
         assertEquals(

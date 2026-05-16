@@ -47,7 +47,7 @@ class JoinLraIT extends TestBase {
         log.infof("joinLRA recoveryUrl: %s", recoveryUrl);
         assertNotNull(recoveryUrl);
 
-        List<String> activeIds = getActiveIds();
+        List<String> activeIds = getActiveLras();
         long unique = activeIds.size();
 
         assertEquals(
@@ -83,7 +83,7 @@ class JoinLraIT extends TestBase {
         assertNotNull(recoveryUrl);
         log.infof("RecoveryUrl after failover: %s", recoveryUrl);
 
-        List<String> all = getActiveIds();
+        List<String> all = getActiveLras();
         log.infof("Active ids across cluster (raw): %s", all);
 
         long unique = all.size();
