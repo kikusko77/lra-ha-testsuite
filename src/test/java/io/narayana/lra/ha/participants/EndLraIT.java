@@ -2,12 +2,10 @@ package io.narayana.lra.ha.participants;
 
 import static org.junit.Assert.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import io.quarkus.test.junit.QuarkusTest;
 import java.net.URI;
 import java.time.temporal.ChronoUnit;
-import java.util.List;
 import org.jboss.logging.Logger;
 import org.junit.jupiter.api.Test;
 
@@ -28,10 +26,7 @@ class EndLraIT extends TestBase {
 
         waitForNoActiveLra(lra, LRA_GONE_FAST_MS);
 
-        List<String> activeIds = getActiveLras();
-        long unique = activeIds.size();
-
-        assertEquals(0, unique, "Expected no active LRAs after cancel but got ids=" + activeIds);
+        assertNoActiveLras();
     }
 
     @Test
@@ -52,10 +47,7 @@ class EndLraIT extends TestBase {
 
         waitForNoActiveLra(lra, LRA_GONE_FAST_MS);
 
-        List<String> activeIds = getActiveLras();
-        long unique = activeIds.size();
-
-        assertEquals(0, unique, "Expected no active LRAs after cancel but got ids=" + activeIds);
+        assertNoActiveLras();
     }
 
     @Test
@@ -69,10 +61,7 @@ class EndLraIT extends TestBase {
 
         waitForNoActiveLra(lra, LRA_GONE_FAST_MS);
 
-        List<String> activeIds = getActiveLras();
-        long unique = activeIds.size();
-
-        assertEquals(0, unique, "Expected no active LRAs after close but got ids=" + activeIds);
+        assertNoActiveLras();
     }
 
     @Test
@@ -93,10 +82,7 @@ class EndLraIT extends TestBase {
 
         waitForNoActiveLra(lra, LRA_GONE_FAST_MS);
 
-        List<String> activeIds = getActiveLras();
-        long unique = activeIds.size();
-
-        assertEquals(0, unique, "Expected no active LRAs after close but got ids=" + activeIds);
+        assertNoActiveLras();
     }
 
     @Test
@@ -118,10 +104,7 @@ class EndLraIT extends TestBase {
 
         waitForNoActiveLra(lra, LRA_GONE_FAST_MS);
 
-        List<String> activeIds = getActiveLras();
-        long unique = activeIds.size();
-
-        assertEquals(0, unique, "Expected no active LRAs after cancel but got ids=" + activeIds);
+        assertNoActiveLras();
     }
 
     @Test
@@ -139,10 +122,7 @@ class EndLraIT extends TestBase {
 
         waitForNoActiveLra(lra, LRA_GONE_FAST_MS);
 
-        List<String> activeIds = getActiveLras();
-        long unique = activeIds.size();
-
-        assertEquals(0, unique, "Expected no active LRAs after cancel but got ids=" + activeIds);
+        assertNoActiveLras();
     }
 
     @Test
@@ -164,10 +144,7 @@ class EndLraIT extends TestBase {
 
         waitForNoActiveLra(lra, LRA_GONE_FAST_MS);
 
-        List<String> activeIds = getActiveLras();
-        long unique = activeIds.size();
-
-        assertEquals(0, unique, "Expected no active LRAs after close but got ids=" + activeIds);
+        assertNoActiveLras();
     }
 
     @Test
@@ -188,10 +165,7 @@ class EndLraIT extends TestBase {
 
         waitForNoActiveLra(lra, LRA_GONE_FAST_MS);
 
-        List<String> activeIds = getActiveLras();
-        long unique = activeIds.size();
-
-        assertEquals(0, unique, "Expected no active LRAs after close but got ids=" + activeIds);
+        assertNoActiveLras();
     }
 
     private URI prepareLraWithParticipant(String suffix) {
