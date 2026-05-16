@@ -38,12 +38,7 @@ class ForgetIT extends TestBase {
 
         enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_SAVE);
 
-        try {
-            lraClient.cancelLRA(lra);
-        } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.infof("cancelLRA returned %s, coordinator crashed as expected",
-                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
-        }
+        cancel(lra);
 
         ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
         waitForFailedAsyncForget(lra, CRASH_SCAN_WAIT_MS);
@@ -66,12 +61,7 @@ class ForgetIT extends TestBase {
 
         enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_DURING_CLEANUP);
 
-        try {
-            lraClient.cancelLRA(lra);
-        } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.infof("cancelLRA returned %s — coordinator crashed after 202, proxy will fail over",
-                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
-        }
+        cancel(lra);
 
         ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
         waitForFailedAsyncForget(lra, CRASH_SCAN_WAIT_MS);
@@ -95,12 +85,7 @@ class ForgetIT extends TestBase {
 
         enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_SAVE);
 
-        try {
-            lraClient.closeLRA(lra);
-        } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.infof("closeLRA returned %s, coordinator crashed as expected",
-                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
-        }
+        close(lra);
 
         ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
         waitForFailedAsyncForget(lra, CRASH_SCAN_WAIT_MS);
@@ -123,12 +108,7 @@ class ForgetIT extends TestBase {
 
         enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_DURING_CLEANUP);
 
-        try {
-            lraClient.closeLRA(lra);
-        } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.infof("closeLRA returned %s — coordinator crashed after 202, proxy will fail over",
-                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
-        }
+        close(lra);
 
         ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
         waitForFailedAsyncForget(lra, CRASH_SCAN_WAIT_MS);

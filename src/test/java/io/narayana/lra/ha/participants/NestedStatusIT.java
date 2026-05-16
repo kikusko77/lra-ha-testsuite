@@ -118,12 +118,7 @@ class NestedStatusIT extends TestBase {
 
         enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_PARTICIPANT_RESPONSE);
 
-        try {
-            lraClient.cancelLRA(nested);
-        } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.infof("cancelLRA returned %s — coordinator crashed after 202",
-                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
-        }
+        cancel(nested);
 
         ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
         waitForNoActiveLra(nested, LRA_GONE_AFTER_RECOVERY_MS);
@@ -151,12 +146,7 @@ class NestedStatusIT extends TestBase {
 
         enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_PARTICIPANT_RESPONSE);
 
-        try {
-            lraClient.closeLRA(nested);
-        } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.infof("closeLRA returned %s — coordinator crashed after 202",
-                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
-        }
+        close(nested);
 
         ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
         waitForNoActiveLra(nested, LRA_GONE_AFTER_RECOVERY_MS);

@@ -48,14 +48,7 @@ class NestedEndLraIT extends TestBase {
 
         enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_SAVE);
 
-        try {
-            lraClient.cancelLRA(nested);
-        } catch (jakarta.ws.rs.NotFoundException e) {
-            log.info("cancelLRA returned 404 after failover, treating as already finished");
-        } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.infof("cancelLRA returned %s after failover for nested %s",
-                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown", nested);
-        }
+        cancel(nested);
 
         ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
         waitForNoActiveLra(nested, LRA_GONE_AFTER_RECOVERY_MS);
@@ -84,14 +77,7 @@ class NestedEndLraIT extends TestBase {
 
         enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_SAVE);
 
-        try {
-            lraClient.closeLRA(nested);
-        } catch (jakarta.ws.rs.NotFoundException e) {
-            log.info("closeLRA returned 404 after failover, treating as already finished");
-        } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.infof("closeLRA returned %s after failover for nested %s",
-                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown", nested);
-        }
+        close(nested);
 
         ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
         waitForNoActiveLra(nested, LRA_GONE_AFTER_RECOVERY_MS);
@@ -106,13 +92,7 @@ class NestedEndLraIT extends TestBase {
 
         enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_DURING_CLEANUP);
 
-        try {
-            lraClient.cancelLRA(nested);
-        } catch (jakarta.ws.rs.NotFoundException ignored) {
-        } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.infof("cancelLRA returned %s during cleanup for nested %s",
-                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown", nested);
-        }
+        cancel(nested);
 
         ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
         waitForNoActiveLra(nested, LRA_GONE_AFTER_RECOVERY_MS);
@@ -127,13 +107,7 @@ class NestedEndLraIT extends TestBase {
 
         enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_DURING_CLEANUP);
 
-        try {
-            lraClient.closeLRA(nested);
-        } catch (jakarta.ws.rs.NotFoundException ignored) {
-        } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.infof("closeLRA returned %s during cleanup for nested %s",
-                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown", nested);
-        }
+        close(nested);
 
         ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
         waitForNoActiveLra(nested, LRA_GONE_AFTER_RECOVERY_MS);
@@ -166,12 +140,7 @@ class NestedEndLraIT extends TestBase {
         assertDoesNotThrow(() -> lraClient.closeLRA(nested));
         waitForCallCount(nested, 1, LRA_GONE_HAPPY_PATH_MS);
 
-        try {
-            lraClient.cancelLRA(parent);
-        } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.infof("parent cancelLRA returned %s",
-                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
-        }
+        cancel(parent);
         waitForNoActiveLra(parent, LRA_GONE_AFTER_RECOVERY_MS);
 
         int total = getCallCount(nested);
@@ -196,12 +165,7 @@ class NestedEndLraIT extends TestBase {
 
         enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_SAVE);
 
-        try {
-            lraClient.cancelLRA(parent);
-        } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.infof("parent cancelLRA returned %s — coordinator crashed",
-                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
-        }
+        cancel(parent);
 
         ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
         waitForNoActiveLra(parent, LRA_GONE_AFTER_RECOVERY_MS);

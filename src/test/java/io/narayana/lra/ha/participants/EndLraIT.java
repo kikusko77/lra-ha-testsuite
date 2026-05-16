@@ -36,14 +36,7 @@ class EndLraIT extends TestBase {
 
         enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_SAVE);
 
-        try {
-            lraClient.cancelLRA(lra);
-        } catch (jakarta.ws.rs.NotFoundException e) {
-            log.infof("cancelLRA returned 404 after failover, treating as already finished: %s", lra);
-        } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.infof("cancelLRA returned %s after failover for %s, accepting for post-check",
-                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown", lra);
-        }
+        cancel(lra);
 
         waitForNoActiveLra(lra, LRA_GONE_FAST_MS);
 
@@ -71,14 +64,7 @@ class EndLraIT extends TestBase {
 
         enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_SAVE);
 
-        try {
-            lraClient.closeLRA(lra);
-        } catch (jakarta.ws.rs.NotFoundException e) {
-            log.infof("closeLRA returned 404 after failover, treating as already finished: %s", lra);
-        } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.infof("closeLRA returned %s after failover for %s, accepting for post-check",
-                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown", lra);
-        }
+        close(lra);
 
         waitForNoActiveLra(lra, LRA_GONE_FAST_MS);
 
@@ -92,15 +78,7 @@ class EndLraIT extends TestBase {
 
         enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_DURING_CLEANUP);
 
-        try {
-            lraClient.cancelLRA(lra);
-        } catch (jakarta.ws.rs.NotFoundException e) {
-            log.infof("cancelLRA returned 404 after failover, treating as already finished: %s", lra);
-        } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.infof("cancelLRA returned %s during cleanup failover for %s, accepting for post-check",
-                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown",
-                    lra);
-        }
+        cancel(lra);
 
         waitForNoActiveLra(lra, LRA_GONE_FAST_MS);
 
@@ -114,11 +92,7 @@ class EndLraIT extends TestBase {
 
         enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_CLEANUP);
 
-        try {
-            lraClient.cancelLRA(lra);
-        } catch (jakarta.ws.rs.NotFoundException e) {
-            log.infof("cancelLRA returned 404 after failover, treating as already finished: %s", lra);
-        }
+        cancel(lra);
 
         waitForNoActiveLra(lra, LRA_GONE_FAST_MS);
 
@@ -132,15 +106,7 @@ class EndLraIT extends TestBase {
 
         enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_DURING_CLEANUP);
 
-        try {
-            lraClient.closeLRA(lra);
-        } catch (jakarta.ws.rs.NotFoundException e) {
-            log.infof("closeLRA returned 404 after failover, treating as already finished: %s", lra);
-        } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.infof("closeLRA returned %s during cleanup failover for %s, accepting for post-check",
-                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown",
-                    lra);
-        }
+        close(lra);
 
         waitForNoActiveLra(lra, LRA_GONE_FAST_MS);
 
@@ -154,14 +120,7 @@ class EndLraIT extends TestBase {
 
         enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_CLEANUP);
 
-        try {
-            lraClient.closeLRA(lra);
-        } catch (jakarta.ws.rs.NotFoundException e) {
-            log.infof("closeLRA returned 404 after failover, treating as already finished: %s", lra);
-        } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.infof("closeLRA returned %s after failover for %s, accepting for post-check",
-                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown", lra);
-        }
+        close(lra);
 
         waitForNoActiveLra(lra, LRA_GONE_FAST_MS);
 

@@ -60,12 +60,7 @@ class CompensateIT extends TestBase {
 
         enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_DURING_CLEANUP);
 
-        try {
-            lraClient.cancelLRA(lra);
-        } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.infof("cancelLRA returned %s (coordinator crashed), proceeding to recovery check",
-                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
-        }
+        cancel(lra);
 
         ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
         waitForNoActiveLra(lra, LRA_GONE_AFTER_RECOVERY_MS);
@@ -82,14 +77,7 @@ class CompensateIT extends TestBase {
 
         enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_SAVE);
 
-        try {
-            lraClient.cancelLRA(lra);
-        } catch (jakarta.ws.rs.NotFoundException e) {
-            log.info("cancelLRA returned 404, treating as already processed");
-        } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.infof("cancelLRA returned %s, coordinator crashed as expected",
-                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
-        }
+        cancel(lra);
 
         ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
         waitForNoActiveLra(lra, LRA_GONE_AFTER_RECOVERY_MS);
@@ -108,12 +96,7 @@ class CompensateIT extends TestBase {
 
         enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_BEFORE_SAVE);
 
-        try {
-            lraClient.cancelLRA(lra);
-        } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.infof("cancelLRA returned %s (coordinator crashed), LRA will be cancelled by timeout on recovery",
-                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
-        }
+        cancel(lra);
 
         ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
         waitForNoActiveLra(lra, LRA_GONE_AFTER_RECOVERY_MS);
@@ -131,12 +114,7 @@ class CompensateIT extends TestBase {
 
         enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_SAVE);
 
-        try {
-            lraClient.cancelLRA(lra);
-        } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.infof("cancelLRA returned %s, coordinator crashed",
-                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
-        }
+        cancel(lra);
 
         ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
         waitForNoActiveLra(lra, LRA_GONE_AFTER_RECOVERY_MS);
@@ -159,12 +137,7 @@ class CompensateIT extends TestBase {
 
         enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_DURING_CLEANUP);
 
-        try {
-            lraClient.cancelLRA(lra);
-        } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.infof("cancelLRA returned %s — coordinator crashed after 202, proxy will failover to coordinator-2",
-                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
-        }
+        cancel(lra);
 
         ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
         waitForNoActiveLra(lra, LRA_GONE_AFTER_RECOVERY_MS);
@@ -189,12 +162,7 @@ class CompensateIT extends TestBase {
 
         enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_PARTICIPANT_RESPONSE);
 
-        try {
-            lraClient.cancelLRA(lra);
-        } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.infof("cancelLRA returned %s — coordinator crashed after receiving participant 202",
-                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
-        }
+        cancel(lra);
 
         ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
         waitForNoActiveLra(lra, LRA_GONE_AFTER_RECOVERY_MS);
@@ -214,13 +182,7 @@ class CompensateIT extends TestBase {
 
         enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_PARTICIPANT_RESPONSE);
 
-        try {
-            lraClient.cancelLRA(lra);
-        } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.infof(
-                    "cancelLRA returned %s — coordinator crashed after receiving participant 200 but before persisting FINISH_OK",
-                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
-        }
+        cancel(lra);
 
         ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
         waitForNoActiveLra(lra, LRA_GONE_AFTER_RECOVERY_MS);
@@ -237,12 +199,7 @@ class CompensateIT extends TestBase {
         log.info("CompensateIT: testParticipantTransientFailure_coordinatorRetries");
         URI lra = prepareCompensateLra("unreachable", COMPENSATE_UNREACHABLE);
 
-        try {
-            lraClient.cancelLRA(lra);
-        } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.infof("cancelLRA returned %s (503 from participant — coordinator queues for recovery scan)",
-                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
-        }
+        cancel(lra);
         waitForNoActiveLra(lra, RECOVERY_SCAN_WAIT_MS);
         assertNoActiveLras();
     }
@@ -252,12 +209,7 @@ class CompensateIT extends TestBase {
         log.info("CompensateIT: testFailedToCompensate_lraMovesToFailedToCancel");
         URI lra = prepareCompensateLra("fail", COMPENSATE_FAIL);
 
-        try {
-            lraClient.cancelLRA(lra);
-        } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.infof("cancelLRA returned %s for fail scenario",
-                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
-        }
+        cancel(lra);
 
         waitForNoActiveLra(lra, LRA_GONE_HAPPY_PATH_MS);
 

@@ -36,12 +36,7 @@ class NestedCompleteIT extends TestBase {
 
         enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_DURING_CLEANUP);
 
-        try {
-            lraClient.closeLRA(nested);
-        } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.infof("closeLRA returned %s (coordinator crashed)",
-                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
-        }
+        close(nested);
 
         ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
         waitForNoActiveLra(nested, LRA_GONE_AFTER_RECOVERY_MS);
@@ -63,14 +58,7 @@ class NestedCompleteIT extends TestBase {
 
         enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_SAVE);
 
-        try {
-            lraClient.closeLRA(nested);
-        } catch (jakarta.ws.rs.NotFoundException e) {
-            log.info("closeLRA returned 404, treating as already processed");
-        } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.infof("closeLRA returned %s (coordinator crashed)",
-                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
-        }
+        close(nested);
 
         ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
         waitForNoActiveLra(nested, LRA_GONE_AFTER_RECOVERY_MS);
@@ -88,12 +76,7 @@ class NestedCompleteIT extends TestBase {
 
         enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_BEFORE_SAVE);
 
-        try {
-            lraClient.closeLRA(nested);
-        } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.infof("closeLRA returned %s — coordinator crashed",
-                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
-        }
+        close(nested);
 
         ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
         waitForNoActiveLra(nested, LRA_GONE_AFTER_RECOVERY_MS);
@@ -112,12 +95,7 @@ class NestedCompleteIT extends TestBase {
 
         enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_PARTICIPANT_RESPONSE);
 
-        try {
-            lraClient.closeLRA(nested);
-        } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.infof("closeLRA returned %s — coordinator crashed after 200",
-                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
-        }
+        close(nested);
 
         ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
         waitForNoActiveLra(nested, LRA_GONE_AFTER_RECOVERY_MS);
@@ -139,12 +117,7 @@ class NestedCompleteIT extends TestBase {
 
         enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_SAVE);
 
-        try {
-            lraClient.closeLRA(nested);
-        } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.infof("closeLRA returned %s, coordinator crashed",
-                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
-        }
+        close(nested);
 
         ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
         waitForNoActiveLra(nested, LRA_GONE_AFTER_RECOVERY_MS);
@@ -159,12 +132,7 @@ class NestedCompleteIT extends TestBase {
 
         enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_DURING_CLEANUP);
 
-        try {
-            lraClient.closeLRA(nested);
-        } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.infof("closeLRA returned %s — coordinator crashed after 202",
-                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
-        }
+        close(nested);
 
         ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
         waitForNoActiveLra(nested, LRA_GONE_AFTER_RECOVERY_MS);
@@ -191,12 +159,7 @@ class NestedCompleteIT extends TestBase {
 
         enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_PARTICIPANT_RESPONSE);
 
-        try {
-            lraClient.closeLRA(nested);
-        } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.infof("closeLRA returned %s — coordinator crashed after 202",
-                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
-        }
+        close(nested);
 
         ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
         waitForNoActiveLra(nested, LRA_GONE_AFTER_RECOVERY_MS);
@@ -219,12 +182,7 @@ class NestedCompleteIT extends TestBase {
         URI nested = prepareNestedLra(parent, "nested-complete-unreachable",
                 COMPENSATE, COMPLETE_UNREACHABLE);
 
-        try {
-            lraClient.closeLRA(nested);
-        } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.infof("closeLRA returned %s (503 from participant)",
-                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
-        }
+        close(nested);
         waitForNoActiveLra(nested, RECOVERY_SCAN_WAIT_MS);
     }
 
@@ -235,12 +193,7 @@ class NestedCompleteIT extends TestBase {
         URI nested = prepareNestedLra(parent, "nested-complete-fail",
                 COMPENSATE, COMPLETE_FAIL);
 
-        try {
-            lraClient.closeLRA(nested);
-        } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.infof("closeLRA returned %s for fail scenario",
-                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
-        }
+        close(nested);
 
         waitForNoActiveLra(nested, LRA_GONE_HAPPY_PATH_MS);
 

@@ -30,11 +30,7 @@ class AfterLraIT extends TestBase {
                 participantClientId("after-cancel"),
                 COMPENSATE, COMPLETE);
 
-        try {
-            lraClient.cancelLRA(lra);
-        } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.infof("cancelLRA returned %s", e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
-        }
+        cancel(lra);
 
         waitForNoActiveLra(lra, LRA_GONE_HAPPY_PATH_MS);
         waitForAfterCallCount(lra, 1, LRA_GONE_HAPPY_PATH_MS);
@@ -52,12 +48,7 @@ class AfterLraIT extends TestBase {
                 participantClientId("after-failed-close"),
                 COMPENSATE, COMPLETE_FAIL);
 
-        try {
-            lraClient.closeLRA(lra);
-        } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.infof("closeLRA returned %s — expected for fail scenario",
-                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
-        }
+        close(lra);
 
         waitForNoActiveLra(lra, LRA_GONE_HAPPY_PATH_MS);
         waitForAfterCallCount(lra, 1, LRA_GONE_HAPPY_PATH_MS);
@@ -75,12 +66,7 @@ class AfterLraIT extends TestBase {
                 participantClientId("after-failed-cancel"),
                 COMPENSATE_FAIL, COMPLETE);
 
-        try {
-            lraClient.cancelLRA(lra);
-        } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.infof("cancelLRA returned %s — expected for fail scenario",
-                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
-        }
+        cancel(lra);
 
         waitForNoActiveLra(lra, LRA_GONE_HAPPY_PATH_MS);
         waitForAfterCallCount(lra, 1, LRA_GONE_HAPPY_PATH_MS);
@@ -108,14 +94,7 @@ class AfterLraIT extends TestBase {
 
         enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_SAVE);
 
-        try {
-            lraClient.cancelLRA(lra);
-        } catch (jakarta.ws.rs.NotFoundException e) {
-            log.info("cancelLRA returned 404, treating as already processed");
-        } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.infof("cancelLRA returned %s — coordinator crashed as expected",
-                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
-        }
+        cancel(lra);
 
         ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
         waitForNoActiveLra(lra, LRA_GONE_AFTER_RECOVERY_MS);
@@ -140,12 +119,7 @@ class AfterLraIT extends TestBase {
 
         enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_DURING_CLEANUP);
 
-        try {
-            lraClient.closeLRA(lra);
-        } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.infof("closeLRA returned %s — coordinator crashed during cleanup",
-                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
-        }
+        close(lra);
 
         ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
         waitForNoActiveLra(lra, LRA_GONE_AFTER_RECOVERY_MS);

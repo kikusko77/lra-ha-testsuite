@@ -158,12 +158,7 @@ class StatusIT extends TestBase {
 
         enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_PARTICIPANT_RESPONSE);
 
-        try {
-            lraClient.cancelLRA(lra);
-        } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.infof("cancelLRA returned %s — coordinator crashed after receiving participant 202",
-                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
-        }
+        cancel(lra);
 
         ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
         waitForNoActiveLra(lra, LRA_GONE_AFTER_RECOVERY_MS);
@@ -198,12 +193,7 @@ class StatusIT extends TestBase {
 
         enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_PARTICIPANT_RESPONSE);
 
-        try {
-            lraClient.closeLRA(lra);
-        } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.infof("closeLRA returned %s — coordinator crashed after receiving participant 202",
-                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
-        }
+        close(lra);
 
         ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
         waitForNoActiveLra(lra, LRA_GONE_AFTER_RECOVERY_MS);

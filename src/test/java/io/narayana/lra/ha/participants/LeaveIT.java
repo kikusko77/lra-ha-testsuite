@@ -68,12 +68,7 @@ class LeaveIT extends TestBase {
 
         enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_BEFORE_SAVE);
 
-        try {
-            lraClient.cancelLRA(lra);
-        } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.infof("cancelLRA returned %s — coordinator crashed, proxy fails over",
-                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
-        }
+        cancel(lra);
 
         ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
         waitForNoActiveLra(lra, LRA_GONE_AFTER_RECOVERY_MS);
@@ -91,12 +86,7 @@ class LeaveIT extends TestBase {
 
         enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_SAVE);
 
-        try {
-            lraClient.cancelLRA(lra);
-        } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.infof("cancelLRA returned %s after failover, treating as already processed",
-                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
-        }
+        cancel(lra);
 
         ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
         waitForNoActiveLra(lra, LRA_GONE_AFTER_RECOVERY_MS);
@@ -114,12 +104,7 @@ class LeaveIT extends TestBase {
 
         enableFailurePoint(nextRoutedCoordinator(), FailurePoint.END_AFTER_SAVE);
 
-        try {
-            lraClient.closeLRA(lra);
-        } catch (jakarta.ws.rs.WebApplicationException e) {
-            log.infof("closeLRA returned %s after failover, treating as already processed",
-                    e.getResponse() != null ? e.getResponse().getStatus() : "unknown");
-        }
+        close(lra);
 
         ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
         waitForNoActiveLra(lra, LRA_GONE_AFTER_RECOVERY_MS);
@@ -139,10 +124,7 @@ class LeaveIT extends TestBase {
 
         ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
 
-        try {
-            lraClient.cancelLRA(lra);
-        } catch (jakarta.ws.rs.WebApplicationException ignored) {
-        }
+        cancel(lra);
 
         waitForNoActiveLra(lra, LRA_GONE_AFTER_RECOVERY_MS);
 
@@ -161,10 +143,7 @@ class LeaveIT extends TestBase {
 
         ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
 
-        try {
-            lraClient.cancelLRA(lra);
-        } catch (jakarta.ws.rs.WebApplicationException ignored) {
-        }
+        cancel(lra);
 
         waitForNoActiveLra(lra, LRA_GONE_AFTER_RECOVERY_MS);
 
@@ -183,10 +162,7 @@ class LeaveIT extends TestBase {
 
         ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
 
-        try {
-            lraClient.closeLRA(lra);
-        } catch (jakarta.ws.rs.WebApplicationException ignored) {
-        }
+        close(lra);
 
         waitForNoActiveLra(lra, LRA_GONE_AFTER_RECOVERY_MS);
 
@@ -205,10 +181,7 @@ class LeaveIT extends TestBase {
 
         ensureCoordinatorAvailability(CRASH_RECOVERY_TIMEOUT_S);
 
-        try {
-            lraClient.closeLRA(lra);
-        } catch (jakarta.ws.rs.WebApplicationException ignored) {
-        }
+        close(lra);
 
         waitForNoActiveLra(lra, LRA_GONE_AFTER_RECOVERY_MS);
 
