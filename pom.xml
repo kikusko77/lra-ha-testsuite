@@ -8,7 +8,7 @@
   <parent>
     <groupId>org.jboss.narayana.lra</groupId>
     <artifactId>lra-parent</artifactId>
-    <version>1.0.3.Final-SNAPSHOT</version>
+    <version>1.1.1.Final-SNAPSHOT</version>
   </parent>
 
   <artifactId>lra-test-containers</artifactId>
@@ -17,6 +17,7 @@
 
   <properties>
     <compiler-plugin.version>3.14.1</compiler-plugin.version>
+    <io.smallrye.config.version>3.16.0</io.smallrye.config.version>
     <maven.compiler.release>21</maven.compiler.release>
     <maven.test.skip>false</maven.test.skip>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -54,12 +55,12 @@
 
     <dependency>
       <groupId>io.quarkus</groupId>
-      <artifactId>quarkus-rest-jackson</artifactId>
+      <artifactId>quarkus-resteasy-jackson</artifactId>
     </dependency>
 
     <dependency>
       <groupId>io.quarkus</groupId>
-      <artifactId>quarkus-rest-client-jackson</artifactId>
+      <artifactId>quarkus-resteasy-client-jackson</artifactId>
     </dependency>
 
     <!-- Narayana dependencies -->
@@ -67,19 +68,16 @@
       <groupId>org.jboss.narayana.lra</groupId>
       <artifactId>narayana-lra</artifactId>
     </dependency>
-    <dependency>
-      <groupId>org.jboss.narayana.lra</groupId>
-      <artifactId>lra-coordinator-jar</artifactId>
-    </dependency>
+
     <dependency>
       <groupId>org.jboss.narayana.lra</groupId>
       <artifactId>lra-client</artifactId>
     </dependency>
 
     <dependency>
-      <groupId>junit</groupId>
-      <artifactId>junit</artifactId>
-      <scope>compile</scope>
+      <groupId>org.jboss.narayana.lra</groupId>
+      <artifactId>lra-coordinator-proxy</artifactId>
+      <scope>test</scope>
     </dependency>
 
     <dependency>
@@ -89,24 +87,6 @@
       <scope>test</scope>
     </dependency>
 
-    <dependency>
-      <groupId>org.testcontainers</groupId>
-      <artifactId>testcontainers</artifactId>
-      <version>1.21.3</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.testcontainers</groupId>
-      <artifactId>postgresql</artifactId>
-      <version>1.21.3</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.postgresql</groupId>
-      <artifactId>postgresql</artifactId>
-      <version>42.7.8</version>
-      <scope>test</scope>
-    </dependency>
     <dependency>
       <groupId>com.google.code.gson</groupId>
       <artifactId>gson</artifactId>
@@ -118,10 +98,6 @@
       <artifactId>junit-jupiter</artifactId>
       <version>5.12.2</version>
       <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>io.quarkus</groupId>
-      <artifactId>quarkus-rest</artifactId>
     </dependency>
     <dependency>
       <groupId>io.quarkus</groupId>
@@ -141,6 +117,41 @@
       <groupId>io.quarkus</groupId>
       <artifactId>quarkus-smallrye-health</artifactId>
     </dependency>
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-smallrye-fault-tolerance</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.smallrye.config</groupId>
+      <artifactId>smallrye-config</artifactId>
+      <version>${io.smallrye.config.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.smallrye.config</groupId>
+      <artifactId>smallrye-config-core</artifactId>
+      <version>${io.smallrye.config.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.smallrye.config</groupId>
+      <artifactId>smallrye-config-common</artifactId>
+      <version>${io.smallrye.config.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.smallrye.config</groupId>
+      <artifactId>smallrye-config-source-yaml</artifactId>
+      <version>${io.smallrye.config.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.awaitility</groupId>
+      <artifactId>awaitility</artifactId>
+      <version>4.2.2</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.vertx</groupId>
+      <artifactId>vertx-web-client</artifactId>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 
   <build>
@@ -152,7 +163,9 @@
         <configuration>
           <useFile>false</useFile>
           <redirectTestOutputToFile>false</redirectTestOutputToFile>
-          <forkCount>0</forkCount>
+          <forkCount>1</forkCount>
+          <reuseForks>false</reuseForks>
+          <useSystemClassLoader>true</useSystemClassLoader>
           <printSummary>true</printSummary>
         </configuration>
       </plugin>
@@ -168,6 +181,8 @@
           </includes>
           <useModulePath>false</useModulePath>
           <systemPropertyVariables>
+            <lra.internal.client.timeout.start>2</lra.internal.client.timeout.start>
+            <lra.coordinator.url>http://localhost:8080/lra-coordinator</lra.coordinator.url>
             <native.image.path>${project.build.directory}/${project.build.finalName}-runner</native.image.path>
             <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
             <maven.home>${maven.home}</maven.home>
@@ -210,18 +225,4 @@
 
     </plugins>
   </build>
-
-  <profiles>
-    <profile>
-      <id>do-not-start-lra-coordinator</id>
-      <activation>
-        <property>
-          <name>!lra.coordinator</name>
-        </property>
-      </activation>
-      <properties>
-        <lra.coordinator.exec.plugin.phase>none</lra.coordinator.exec.plugin.phase>
-      </properties>
-    </profile>
-  </profiles>
 </project>
